@@ -1,0 +1,2479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crew check-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Saira+Stencil+One&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" async></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #E3E7EA;
+  --surface: #F4F6F7;
+  --surface-2: #D5DBE0;
+  --ink: #1F262C;
+  --ink-2: #4C5862;
+  --line: #BCC5CC;
+  --plate: #2B333A;
+  --plate-ink: #F6BE00;
+  --plate-empty: #4A5660;
+  --yellow: #F6BE00;
+  --on-yellow: #1F262C;
+  --navy: #1D3B5C;
+  --on-navy: #FFFFFF;
+  --red: #A3221A;
+  --red-bg: #F4D8D5;
+  --amber: #6B4C00;
+  --amber-bg: #FAE7B0;
+  --green: #21603A;
+  --green-bg: #D2E9DA;
+  --focus: #1C6BCC;
+  --body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
+  --cond: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif;
+  --stencil: "Saira Stencil One", "Barlow Condensed", "Arial Narrow", sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #161B1F;
+    --surface: #20272D;
+    --surface-2: #2C353C;
+    --ink: #E5E9EC;
+    --ink-2: #A4AFB8;
+    --line: #3A454E;
+    --plate: #2C363E;
+    --plate-ink: #F6BE00;
+    --plate-empty: #4D5B66;
+    --yellow: #F6BE00;
+    --on-yellow: #1F262C;
+    --navy: #2F5E92;
+    --on-navy: #FFFFFF;
+    --red: #F19189;
+    --red-bg: #4A2320;
+    --amber: #F3D27A;
+    --amber-bg: #44360F;
+    --green: #8BD3A2;
+    --green-bg: #1C3A27;
+    --focus: #7DB3F5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161B1F;
+  --surface: #20272D;
+  --surface-2: #2C353C;
+  --ink: #E5E9EC;
+  --ink-2: #A4AFB8;
+  --line: #3A454E;
+  --plate: #2C363E;
+  --plate-ink: #F6BE00;
+  --plate-empty: #4D5B66;
+  --yellow: #F6BE00;
+  --on-yellow: #1F262C;
+  --navy: #2F5E92;
+  --on-navy: #FFFFFF;
+  --red: #F19189;
+  --red-bg: #4A2320;
+  --amber: #F3D27A;
+  --amber-bg: #44360F;
+  --green: #8BD3A2;
+  --green-bg: #1C3A27;
+  --focus: #7DB3F5;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; height: 100%;
+  background: var(--bg); color: var(--ink);
+  font: 400 17px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--surface);
+}
+[hidden] { display: none !important; }
+button { font-family: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--cond); font-weight: 700; line-height: 1.05; margin: 0; }
+p { margin: 0; }
+
+/* ---------- shared controls ---------- */
+.btn {
+  font: 600 17px/1 var(--cond); letter-spacing: .01em;
+  min-height: 42px; padding: 10px 16px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--yellow); color: var(--on-yellow); border-color: transparent; }
+.btn.primary:hover { filter: brightness(.96); }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.icon { padding: 10px 11px; }
+.btn.big { min-height: 56px; font-size: 22px; padding: 14px 26px; }
+.btn svg { width: 18px; height: 18px; }
+.linkish {
+  background: none; border: 0; color: var(--ink-2); cursor: pointer;
+  font: 500 17px/1 var(--body); text-decoration: underline; text-underline-offset: 3px;
+  padding: 12px 8px;
+}
+input, select, textarea {
+  font: 400 17px/1.3 var(--body); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 10px; min-height: 42px; width: 100%;
+}
+textarea { min-height: 140px; resize: vertical; font-size: 15px; }
+input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color: var(--navy); }
+.f { display: flex; flex-direction: column; gap: 5px; font: 500 16px/1.2 var(--cond); color: var(--ink-2); }
+.f.inline { flex-direction: row; align-items: center; gap: 8px; }
+.f.inline select { width: auto; min-width: 140px; }
+.f.check { flex-direction: row; align-items: center; gap: 10px; padding-top: 22px; color: var(--ink); }
+.err { color: var(--red); font-weight: 600; min-height: 0; }
+.err:empty { display: none; }
+.hint { color: var(--ink-2); font-size: 15px; margin-top: 10px; max-width: 78ch; }
+.sub { color: var(--ink-2); font-size: 16px; margin-top: 4px; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 8px;
+  font-weight: 600; z-index: 60; max-width: min(92vw, 560px); box-shadow: 0 6px 24px rgba(0,0,0,.25);
+}
+
+/* ---------- message views ---------- */
+.msgview { min-height: 100%; display: grid; place-items: center; padding: 32px; text-align: center; color: var(--ink-2); }
+.msgview h1 { font-size: 34px; color: var(--ink); margin-bottom: 10px; }
+
+/* ---------- setup ---------- */
+.setup { min-height: 100%; display: grid; place-items: center; padding: 28px 18px; }
+.setup-inner { width: min(560px, 100%); }
+.setup h1 { font-size: clamp(34px, 6vw, 48px); margin-bottom: 12px; }
+.setup .lede { color: var(--ink-2); margin-bottom: 22px; max-width: 46ch; }
+.stack { display: grid; gap: 14px; }
+
+/* ---------- kiosk ---------- */
+#v-kiosk { height: 100%; display: grid; grid-template-rows: auto 1fr auto; position: relative; overflow: hidden; }
+.k-top {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 14px clamp(16px, 4vw, 44px); border-bottom: 2px solid var(--line);
+  font: 600 clamp(18px, 2.2vw, 24px)/1.2 var(--cond); color: var(--ink-2);
+}
+#k-site { color: var(--ink); }
+.k-body {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: center; gap: clamp(20px, 5vw, 72px);
+  padding: clamp(14px, 3vh, 40px) clamp(16px, 4vw, 44px); min-height: 0;
+}
+.k-clock {
+  font: 700 clamp(70px, 12.5vw, 150px)/.88 var(--cond);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.k-prompt { font: 500 clamp(21px, 2.5vw, 30px)/1.25 var(--body); margin: clamp(16px, 3.4vh, 36px) 0 16px; max-width: 21ch; }
+.plates { display: flex; gap: clamp(8px, 1.3vw, 14px); }
+.plate {
+  width: clamp(60px, 8.8vw, 94px); aspect-ratio: 3 / 4; border-radius: 4px;
+  background: var(--plate); color: var(--plate-ink);
+  display: grid; place-items: center;
+  font: 400 clamp(48px, 7.2vw, 80px)/1 var(--stencil);
+  box-shadow: inset 0 -7px 0 rgba(0,0,0,.2);
+  transition: transform .12s ease-out;
+}
+.plate.empty::after { content: ""; width: 42%; height: 5px; border-radius: 2px; background: var(--plate-empty); align-self: end; margin-bottom: 22%; }
+.plate.next { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.plate.filled { animation: stamp .14s ease-out; }
+@keyframes stamp { from { transform: scale(.92); } to { transform: scale(1); } }
+.k-note { min-height: 1.6em; margin-top: 16px; font-size: 18px; font-weight: 600; max-width: 34ch; }
+.k-note.warn { color: var(--red); }
+.keypad {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(8px, 1.4vh, 14px); width: 100%; max-width: 470px; justify-self: end;
+}
+.key {
+  min-height: clamp(62px, 11.4vh, 104px); border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 600 clamp(32px, 5.2vh, 48px)/1 var(--cond);
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  box-shadow: 0 3px 0 var(--line);
+  display: grid; place-items: center;
+}
+.key:active { transform: translateY(3px); box-shadow: none; background: var(--surface-2); }
+.key.fn { font-size: clamp(20px, 3vh, 26px); color: var(--ink-2); }
+.key svg { width: 38%; max-width: 40px; height: auto; }
+.k-foot {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 6px clamp(16px, 4vw, 44px) 10px; color: var(--ink-2); font-size: 15px;
+}
+.sync.wait { color: var(--amber); font-weight: 600; }
+.sync.bad { color: var(--red); font-weight: 700; }
+@media (max-width: 820px), (orientation: portrait) and (max-width: 1100px) {
+  .k-body { grid-template-columns: 1fr; align-content: center; gap: 22px; }
+  .keypad { justify-self: stretch; max-width: 680px; }
+  .k-clock { font-size: clamp(60px, 17vw, 150px); }
+  .k-prompt { margin-top: 12px; }
+  .plate { width: clamp(60px, 15vw, 120px); font-size: clamp(48px, 11vw, 100px); }
+  .key { min-height: clamp(58px, 9.5vh, 118px); }
+}
+
+/* kiosk overlays */
+.overlay {
+  position: absolute; inset: 0; z-index: 20; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: clamp(18px, 4vw, 56px);
+}
+.overlay.bare { padding: 0; }
+.ov { width: min(780px, 100%); }
+.ov-q { font: 600 22px/1.2 var(--cond); color: var(--ink-2); }
+.ov-name { font-size: clamp(46px, 8vw, 92px); line-height: .95; margin: 8px 0 10px; overflow-wrap: anywhere; }
+.ov-meta { font: 500 clamp(19px, 2.4vw, 24px)/1.3 var(--body); color: var(--ink-2); }
+.ov-status { font: 600 clamp(22px, 2.8vw, 28px)/1.2 var(--cond); margin: 18px 0 26px; }
+.ov-actions { display: grid; grid-template-columns: 1.7fr 1fr; gap: 14px; }
+.act {
+  min-height: clamp(86px, 15vh, 132px); border-radius: 12px; border: 0; cursor: pointer;
+  font: 700 clamp(32px, 4.6vw, 50px)/1 var(--cond); touch-action: manipulation;
+}
+.act.in { background: var(--yellow); color: var(--on-yellow); }
+.act.out { background: var(--navy); color: var(--on-navy); }
+.act.secondary { font-size: clamp(22px, 3vw, 30px); background: transparent; border: 3px solid currentColor; }
+.act.in.secondary { color: var(--ink); border-color: var(--yellow); }
+.act.out.secondary { color: var(--navy); border-color: var(--navy); }
+:root[data-theme="dark"] .act.out.secondary { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .act.out.secondary { color: var(--ink); } }
+.act:active { transform: translateY(2px); }
+.ov-cancel { margin-top: 18px; font-size: 19px; }
+.ov.msg h2 { font-size: clamp(38px, 6vw, 64px); margin-bottom: 14px; }
+.ov.msg p { font-size: clamp(20px, 2.6vw, 26px); margin-bottom: 26px; max-width: 34ch; }
+.picklist { display: grid; gap: 12px; margin: 22px 0 8px; }
+.pickbtn {
+  text-align: left; padding: 18px 22px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
+}
+.pickbtn .pn { font: 700 clamp(28px, 4vw, 40px)/1 var(--cond); }
+.pickbtn .pm { color: var(--ink-2); font-size: 19px; }
+.ov.pick h2 { font-size: clamp(40px, 6vw, 64px); }
+.ov.pick .ov-meta { margin-top: 8px; }
+.done {
+  position: absolute; inset: 0; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  padding: clamp(24px, 7vw, 96px);
+}
+.done.in { background: var(--yellow); color: var(--on-yellow); }
+.done.out { background: var(--navy); color: var(--on-navy); }
+.done h2 { font-size: clamp(60px, 11vw, 150px); line-height: .9; }
+.done .done-time { font: 700 clamp(46px, 8vw, 104px)/1 var(--cond); font-variant-numeric: tabular-nums; margin-top: 10px; }
+.done .done-name { font: 600 clamp(26px, 3.8vw, 44px)/1.15 var(--cond); margin-top: 18px; }
+.done .done-extra { font: 500 clamp(19px, 2.4vw, 26px)/1.3 var(--body); margin-top: 8px; opacity: .9; }
+.done > * { animation: rise .26s ease-out both; }
+.done > *:nth-child(2) { animation-delay: .04s; }
+.done > *:nth-child(3) { animation-delay: .08s; }
+@keyframes rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* PIN */
+.pinov { position: fixed; z-index: 40; }
+.pin-box { width: min(420px, 100%); }
+.pin-box h2 { font-size: 40px; margin-bottom: 18px; }
+.dots { display: flex; gap: 12px; min-height: 26px; margin-bottom: 12px; }
+.dot { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink-2); }
+.dot.on { background: var(--ink); border-color: var(--ink); }
+.keypad.small { max-width: none; justify-self: stretch; margin: 14px 0 16px; }
+.keypad.small .key { min-height: 66px; font-size: 32px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* ---------- supervisor ---------- */
+.s-top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--surface); border-bottom: 2px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
+  padding: 8px clamp(12px, 3vw, 30px);
+}
+.s-brand { display: flex; align-items: center; gap: 10px; font: 700 21px/1 var(--cond); }
+.s-mark { width: 14px; height: 22px; border-radius: 2px; background: var(--yellow); box-shadow: 6px 0 0 var(--navy); margin-right: 6px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+  font: 600 18px/1 var(--cond); padding: 12px 12px 10px; border: 0; background: none;
+  color: var(--ink-2); border-bottom: 4px solid transparent; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--yellow); }
+.badge { background: var(--red); color: #fff; border-radius: 999px; font: 700 13px/1 var(--body); padding: 3px 7px; }
+.s-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.ro-note { color: var(--ink-2); font: 600 16px var(--cond); }
+main { padding: 20px clamp(12px, 3vw, 30px) 56px; max-width: 1320px; }
+.p-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px 24px; margin-bottom: 16px; }
+.p-head h2 { font-size: clamp(30px, 4vw, 40px); }
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ctrls input[type="date"] { width: auto; }
+.ctrls input[type="search"] { width: min(280px, 70vw); }
+.ctrls.bar { margin: -4px 0 14px; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 30px; margin: 0 0 14px; }
+.stat { display: flex; align-items: baseline; gap: 8px; }
+.stat b { font: 700 38px/1 var(--cond); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--ink-2); font-size: 17px; }
+.stat.warn b { color: var(--red); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th {
+  text-align: left; font: 600 16px/1.2 var(--cond); color: var(--ink-2);
+  padding: 11px 12px; border-bottom: 2px solid var(--line); white-space: nowrap; background: var(--surface);
+}
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.strong { font-weight: 600; }
+td.note, td.flags { color: var(--ink-2); font-size: 15px; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--bg); }
+tr.detail td { background: var(--bg); font-size: 15px; color: var(--ink-2); }
+tr.detail ul { margin: 0; padding-left: 18px; }
+.empty { color: var(--ink-2); padding: 18px 12px; }
+.chip { display: inline-block; font: 600 15px/1 var(--cond); padding: 5px 10px 4px; border-radius: 999px; white-space: nowrap; }
+.chip.on { background: var(--green-bg); color: var(--green); }
+.chip.left { background: var(--surface-2); color: var(--ink-2); }
+.chip.not { background: var(--amber-bg); color: var(--amber); }
+.chip.lunch { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--yellow); }
+.chip.shared { background: var(--amber-bg); color: var(--amber); margin-left: 6px; }
+.chip.inactive { background: var(--surface-2); color: var(--ink-2); }
+.flag { display: inline-block; margin: 0 10px 2px 0; }
+.flag.warn { color: var(--red); font-weight: 600; }
+.flag.warn::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; }
+.flag.info { color: var(--ink-2); }
+tr.review td:first-child { box-shadow: inset 4px 0 0 var(--red); }
+
+/* week grid */
+.week th.day { text-align: center; }
+.week td.wcell { text-align: center; min-width: 84px; padding: 8px 6px; }
+.wh { display: block; font: 600 19px/1.1 var(--cond); }
+.wts { display: block; font-size: 13px; color: var(--ink-2); margin-top: 3px; white-space: nowrap; }
+.wcell.bad { background: var(--red-bg); }
+.wcell.bad .wts { color: var(--red); font-weight: 700; }
+.wcell.miss { background: var(--amber-bg); }
+.wcell.miss .wts { color: var(--amber); font-weight: 600; }
+.wcell.check .wh { color: var(--amber); font-size: 15px; }
+.week td.tot { text-align: center; font-weight: 700; border-left: 2px solid var(--line); }
+
+/* forms in panels */
+.formgrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px 16px;
+  padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 18px;
+}
+.formgrid .wide { grid-column: span 2; }
+.st-h { grid-column: 1 / -1; font: 700 22px/1.2 var(--cond); }
+.codes { grid-column: 1 / -1; list-style: none; display: grid; gap: 8px; margin: 0; padding: 0; }
+.codes li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px 6px 14px; font: 600 19px/1.2 var(--cond); }
+.codes li.none { font: 500 16px/1.3 var(--body); color: var(--ink-2); }
+.formgrid .err, .formgrid .hint { grid-column: 1 / -1; margin: 0; }
+.f-submit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; grid-column: 1 / -1; }
+.drawer { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--yellow); border-radius: 8px; padding: 16px; margin-bottom: 18px; display: grid; gap: 12px; }
+.drawer p { max-width: 80ch; }
+@media (max-width: 560px) { .formgrid .wide { grid-column: auto; } }
+
+/* corrections */
+.fixlist { display: grid; gap: 10px; }
+.fix {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 10px 20px; align-items: start;
+}
+.fix.pending { border-left: 5px solid var(--yellow); }
+.fix.withdrawn { opacity: .65; }
+.fix-who strong { font: 700 21px/1.1 var(--cond); margin-right: 10px; }
+.fix-who span { color: var(--ink-2); }
+.fix-what { font-weight: 600; margin-top: 4px; }
+.fix-why { margin-top: 2px; }
+.fix-meta { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+.fix-act { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+.fix-act input { width: 200px; }
+@media (max-width: 720px) { .fix { grid-template-columns: 1fr; } .fix-act { justify-content: flex-start; } }
+
+.scan-at { display: block; font: 500 13px/1.2 var(--cond); color: var(--ink-2); }
+
+/* Sign-in */
+.signin { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.signin-box { width: min(440px, 100%); display: grid; gap: 14px; }
+.signin form { display: grid; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+.signin h1 { font: 700 30px/1.1 var(--cond); }
+.signin .s-brand { font: 700 22px/1.2 var(--cond); display: flex; align-items: center; gap: 4px; }
+.signin .linkish { justify-self: center; }
+.setup-import { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.setup-import h2 { font: 700 24px/1.2 var(--cond); }
+
+/* Board: full-screen status wall */
+#v-sup.boardmode .s-top { display: none; }
+#v-sup.boardmode main { max-width: none; padding: 18px clamp(14px, 2.4vw, 36px) 28px; }
+.b-top { display: flex; align-items: center; justify-content: space-between; gap: 12px 28px; flex-wrap: wrap; margin-bottom: 10px; }
+.b-brand { display: flex; align-items: center; gap: 12px; }
+.b-brand h2 { font: 700 clamp(26px, 2.6vw, 42px)/1.05 var(--cond); }
+.b-clock { font: 700 clamp(38px, 4.6vw, 72px)/1 var(--cond); font-variant-numeric: tabular-nums; }
+.b-stats .stat b { font-size: clamp(38px, 3.6vw, 60px); }
+.b-stats .stat span { font-size: clamp(17px, 1.3vw, 22px); }
+.b-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; align-items: start; }
+.b-col { background: var(--surface); border: 1px solid var(--line); border-top: 6px solid var(--b-accent, var(--line)); border-radius: 10px; }
+.b-col h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px 8px; font: 700 clamp(22px, 1.8vw, 30px)/1.1 var(--cond); }
+.b-col h3 b { font-size: 1.3em; font-variant-numeric: tabular-nums; }
+.b-col ul { list-style: none; margin: 0; padding: 0 16px 12px; }
+.b-col li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font: 600 clamp(19px, 1.5vw, 26px)/1.2 var(--cond); }
+.b-col li span { color: var(--ink-2); font-weight: 500; font-size: .82em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.b-none { color: var(--ink-2); padding: 0 16px 16px; }
+.b-col.on { --b-accent: var(--green); }
+.b-col.lunch { --b-accent: var(--yellow); }
+.b-col.left { --b-accent: var(--ink-2); }
+.b-col.not { --b-accent: var(--amber); }
+
+/* MUSTER and DCTTS fill */
+.fill-out { display: grid; gap: 10px; }
+.fill-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px 18px; flex-wrap: wrap;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px;
+}
+.fill-row strong { font: 700 18px/1.2 var(--cond); overflow-wrap: anywhere; }
+.fill-row p { margin-top: 4px; max-width: 80ch; }
+.fill-row .warn { color: var(--red); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="v-loading" class="msgview"><p>Connecting to the check-in station…</p></div>
+
+<div id="v-nodb" class="msgview" hidden>
+  <div>
+    <h1>This site isn’t connected yet</h1>
+    <p id="nodb-msg">Add your Firebase settings to firebase-config.js, then reload.</p>
+  </div>
+</div>
+
+<div id="v-signin" class="signin" hidden>
+  <div class="signin-box">
+    <div class="s-brand"><span class="s-mark" aria-hidden="true"></span><span id="si-site">Crew check-in</span></div>
+    <form id="si-board" autocomplete="off">
+      <h1>Crew board</h1>
+      <p class="sub">Enter your board code to see who’s on site.</p>
+      <label class="f">Board code<input id="si-code" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+      <button class="btn primary big" type="submit">View the board</button>
+      <p class="err" id="si-err" role="alert"></p>
+    </form>
+    <button type="button" class="linkish" id="si-show-tablet">Set up this tablet</button>
+    <form id="si-tablet" hidden>
+      <h1>Set up this tablet</h1>
+      <p class="sub">Sign in once with the tablet account. The tablet stays signed in after that.</p>
+      <label class="f">Email<input id="si-email" type="email" autocomplete="username"></label>
+      <label class="f">Password<input id="si-pass" type="password" autocomplete="current-password"></label>
+      <button class="btn primary big" type="submit">Sign in</button>
+      <p class="err" id="si-terr" role="alert"></p>
+      <button type="button" class="linkish" id="si-show-board">Back to the board code</button>
+    </form>
+  </div>
+</div>
+
+<section id="v-setup" class="setup" hidden>
+  <div class="setup-inner">
+    <h1>Set up the check-in station</h1>
+    <p class="lede">Choose a supervisor PIN. The crew never need it; it keeps the time records, roster, and corrections locked on the shared tablet.</p>
+    <form id="setup-form" class="stack" autocomplete="off">
+      <label class="f">Site name, shown at the top of the check-in screen
+        <input id="su-site" maxlength="60" placeholder="Pier 2 muster point"></label>
+      <label class="f">Supervisor PIN, 4 to 6 digits
+        <input id="su-pin" type="password" inputmode="numeric" maxlength="6"></label>
+      <label class="f">Type the PIN again
+        <input id="su-pin2" type="password" inputmode="numeric" maxlength="6"></label>
+      <p class="err" id="su-err" role="alert"></p>
+      <div><button class="btn primary big" type="submit">Save and add the crew</button></div>
+    </form>
+    <div class="setup-import">
+      <h2>Moving from the Claude app?</h2>
+      <p class="lede">Import the data file instead. The roster, saved MUSTER and DCTTS, settings, and supervisor codes come straight across, and your main code stays the same.</p>
+      <div class="ctrls"><button type="button" class="btn big" id="su-imp-btn">Import data file</button><input type="file" id="su-imp-file" accept=".json,application/json" hidden></div>
+      <p class="sub" id="su-imp-msg" role="status"></p>
+    </div>
+  </div>
+</section>
+
+<section id="v-kiosk" hidden>
+  <header class="k-top"><span id="k-site">Crew check-in</span><span id="k-date"></span></header>
+  <div class="k-body">
+    <div class="k-left">
+      <div class="k-clock" id="k-clock" aria-hidden="true">--:--</div>
+      <p class="k-prompt">Enter the last 4 digits of your employee number</p>
+      <div class="plates" id="k-plates" role="status" aria-live="polite"></div>
+      <p class="k-note" id="k-note" role="status"></p>
+    </div>
+    <div class="keypad" id="k-pad" role="group" aria-label="Number pad"></div>
+  </div>
+  <footer class="k-foot"><span id="k-sync" class="sync"></span><button type="button" class="linkish" id="k-sup">Supervisor</button></footer>
+  <div class="overlay" id="k-ov" hidden></div>
+</section>
+
+<section id="v-sup" hidden>
+  <header class="s-top">
+    <div class="s-brand"><span class="s-mark" aria-hidden="true"></span><span id="s-site">Crew check-in</span></div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Supervisor views">
+      <button type="button" role="tab" data-tab="onsite">On site</button>
+      <button type="button" role="tab" data-tab="daily">Daily times</button>
+      <button type="button" role="tab" data-tab="week">Week</button>
+      <button type="button" role="tab" data-tab="fixes">Corrections <span class="badge" id="fix-badge" hidden></span></button>
+      <button type="button" role="tab" data-tab="roster">Roster</button>
+      <button type="button" role="tab" data-tab="station">Station</button>
+    </nav>
+    <div class="s-right">
+      <span class="ro-note" id="ro-note" hidden>View only</span>
+      <button type="button" class="btn" id="s-exit">Back to check-in</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Board: full-screen status wall -->
+    <section class="panel board" id="p-board" role="tabpanel" hidden>
+      <div class="b-top">
+        <div class="b-brand"><span class="s-mark" aria-hidden="true"></span><div><h2 id="b-site">Crew check-in</h2><p class="sub" id="b-date"></p></div></div>
+        <p class="b-clock" id="b-clock"></p>
+        <div class="ctrls"><label class="f inline">Crew <select class="crewsel"></select></label><button type="button" class="btn" id="b-exit">Exit board</button></div>
+      </div>
+      <div class="stats b-stats" id="b-stats"></div>
+      <div class="b-cols" id="b-cols"></div>
+    </section>
+
+    <!-- On site -->
+    <section class="panel" id="p-onsite" role="tabpanel" hidden>
+      <div class="p-head">
+        <div><h2>On site now</h2><p class="sub" id="on-date"></p></div>
+        <div class="ctrls"><label class="f inline">Crew <select class="crewsel"></select></label><button type="button" class="btn" id="on-board">Board view</button></div>
+      </div>
+      <div class="stats" id="on-stats"></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Status</th><th>Name</th><th>Crew</th><th>Role</th><th class="num">First in</th><th class="num">Last out</th><th>Note</th></tr></thead>
+        <tbody id="on-body"></tbody>
+      </table></div>
+    </section>
+
+    <!-- Daily -->
+    <section class="panel" id="p-daily" role="tabpanel" hidden>
+      <div class="p-head">
+        <div><h2>Daily times</h2><p class="sub" id="d-long"></p></div>
+        <div class="ctrls">
+          <button type="button" class="btn icon" id="d-prev" aria-label="Previous day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
+          <input type="date" id="d-date" aria-label="Date">
+          <button type="button" class="btn icon" id="d-next" aria-label="Next day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
+          <button type="button" class="btn quiet" id="d-today">Today</button>
+          <label class="f inline">Crew <select class="crewsel"></select></label>
+          <button type="button" class="btn" id="d-export">Export CSV</button>
+          <button type="button" class="btn" id="d-fill-btn">Fill MUSTER &amp; DCTTS</button>
+        </div>
+      </div>
+      <div class="drawer" id="d-fill" hidden>
+        <p>Makes the MUSTER and DCTTS for the day shown above from the saved workbooks: IN and OUT on the MUSTER and START TIME on the DCTTS, filled in from the scans and approved corrections. Hours, meal breaks, and signatures stay blank for the paper copy. When you print the DCTTS, choose Print Entire Workbook in Excel’s print screen so all of that day’s sheets come out.</p>
+        <div class="fill-out" id="fill-out"></div>
+        <div class="ctrls">
+          <button type="button" class="btn" id="d-fill-pick">Replace saved workbooks</button>
+          <input type="file" id="d-fill-files" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
+          <button type="button" class="btn quiet" id="d-fill-close">Close</button>
+          <span class="sub" id="fill-msg" role="status"></span>
+        </div>
+        <p class="sub" id="fill-saved"></p>
+      </div>
+      <div class="stats" id="d-stats"></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Name</th><th>Employee #</th><th>Crew</th><th class="num">In</th><th class="num">Out</th><th class="num">Lunch</th><th class="num">Hours</th><th>Flags</th></tr></thead>
+        <tbody id="d-body"></tbody>
+      </table></div>
+      <p class="hint" id="d-hint"></p>
+    </section>
+
+    <!-- Week -->
+    <section class="panel" id="p-week" role="tabpanel" hidden>
+      <div class="p-head">
+        <div><h2>Week of <span id="w-label"></span></h2><p class="sub">Hours from scans each day, with timesheet hours beside them once you import them.</p></div>
+        <div class="ctrls">
+          <button type="button" class="btn icon" id="w-prev" aria-label="Previous week"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
+          <input type="date" id="w-date" aria-label="Any date in the week">
+          <button type="button" class="btn icon" id="w-next" aria-label="Next week"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
+          <button type="button" class="btn quiet" id="w-this">This week</button>
+          <label class="f inline">Crew <select class="crewsel"></select></label>
+        </div>
+      </div>
+      <div class="ctrls bar">
+        <button type="button" class="btn" id="w-import-btn">Import timesheet hours</button>
+        <button type="button" class="btn" id="w-export">Export week CSV</button>
+        <button type="button" class="btn" id="w-export-scans">Export raw scans</button>
+      </div>
+      <div class="drawer" id="w-import" hidden>
+        <p>Paste rows from the timesheet export: date, employee #, hours. Several rows for the same person and day are added together. Importing a day again replaces that person’s hours for the day.</p>
+        <textarea id="w-paste" placeholder="10/26/2026, 20012345, 8.0"></textarea>
+        <div class="ctrls"><button type="button" class="btn primary" id="w-import-go">Import</button><button type="button" class="btn quiet" id="w-import-cancel">Close</button><span class="sub" id="w-import-msg" role="status"></span></div>
+      </div>
+      <div class="stats" id="w-stats"></div>
+      <div class="tablewrap"><table class="week">
+        <thead id="w-head"></thead>
+        <tbody id="w-body"></tbody>
+      </table></div>
+      <p class="hint" id="w-hint"></p>
+    </section>
+
+    <!-- Corrections -->
+    <section class="panel" id="p-fixes" role="tabpanel" hidden>
+      <div class="p-head">
+        <div><h2>Corrections</h2><p class="sub">The only way to change a time. Each fix needs a reason and counts once someone approves it; the original scan stays on record.</p></div>
+        <label class="f inline">Show <select id="f-filter">
+          <option value="pending">Waiting for approval</option>
+          <option value="recent">Last 30 days</option>
+          <option value="all">All</option>
+        </select></label>
+      </div>
+      <form class="formgrid" id="f-form" autocomplete="off">
+        <label class="f">Date<input type="date" id="f-date" required></label>
+        <label class="f wide">Person<select id="f-emp" required></select></label>
+        <label class="f">Corrected in<input type="time" id="f-in"></label>
+        <label class="f">Corrected out<input type="time" id="f-out"></label>
+        <label class="f">Extra unpaid hours<input type="number" id="f-x" min="0" max="24" step="0.25" placeholder="0"></label>
+        <label class="f wide">Reason<input id="f-reason" maxlength="200" required placeholder="Forgot to scan out; lead confirmed 15:00"></label>
+        <label class="f">Entered by<input id="f-by" maxlength="60" required></label>
+        <div class="f-submit"><button class="btn primary" type="submit">Add correction</button></div>
+        <p class="err" id="f-err" role="alert"></p>
+      </form>
+      <div id="f-list" class="fixlist"></div>
+    </section>
+
+    <!-- Roster -->
+    <section class="panel" id="p-roster" role="tabpanel" hidden>
+      <div class="p-head">
+        <div><h2>Roster</h2><p class="sub" id="r-sub"></p></div>
+        <div class="ctrls">
+          <input type="search" id="r-search" placeholder="Search name or number" aria-label="Search the roster">
+          <button type="button" class="btn" id="r-paste-btn">Paste a list</button>
+        </div>
+      </div>
+      <div class="drawer" id="r-paste" hidden>
+        <p>One person per line: employee #, name, role, company, crew. Copying rows straight out of Excel works. Anyone already on the roster gets updated.</p>
+        <textarea id="r-paste-text" placeholder="20012345&#9;Alex Moreno&#9;Crew&#9;Company&#9;Hull"></textarea>
+        <div class="ctrls"><button type="button" class="btn primary" id="r-paste-go">Save list</button><button type="button" class="btn quiet" id="r-paste-cancel">Close</button><span class="sub" id="r-paste-msg" role="status"></span></div>
+      </div>
+      <form class="formgrid" id="r-form" autocomplete="off">
+        <label class="f">Employee #<input id="r-emp" maxlength="40" required></label>
+        <label class="f wide">Name<input id="r-name" maxlength="60" required></label>
+        <label class="f">Role<select id="r-role"><option>Crew</option><option>Lead</option><option>Sub</option></select></label>
+        <label class="f">Company<input id="r-company" maxlength="40"></label>
+        <label class="f">Crew or hull<input id="r-crew" maxlength="24" list="crewlist"></label>
+        <label class="f check"><input type="checkbox" id="r-active" checked> Active</label>
+        <div class="f-submit"><button class="btn primary" type="submit" id="r-save">Add person</button><button class="btn quiet" type="button" id="r-clear">Clear</button></div>
+        <p class="err" id="r-err" role="alert"></p>
+      </form>
+      <datalist id="crewlist"></datalist>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Name</th><th>Employee #</th><th>Checks in with</th><th>Role</th><th>Company</th><th>Crew</th><th>Status</th></tr></thead>
+        <tbody id="r-body"></tbody>
+      </table></div>
+      <p class="hint">Tap a person to edit them. Set someone inactive instead of removing them, so their past scans keep their name.</p>
+    </section>
+
+    <!-- Station -->
+    <section class="panel" id="p-station" role="tabpanel" hidden>
+      <div class="p-head"><div><h2>Station</h2><p class="sub">Settings for the app and for this tablet.</p></div></div>
+      <form class="formgrid" id="st-form" autocomplete="off">
+        <label class="f wide">Site name<input id="st-site" maxlength="60"></label>
+        <label class="f">Lunch starts<input type="time" id="st-lstart" step="60"></label>
+        <label class="f">Lunch ends<input type="time" id="st-lend" step="60"></label>
+        <label class="f check"><input type="checkbox" id="st-lunchon"> Take lunch out of hours and fill it on the DCTTS</label>
+        <label class="f">Flag timesheet gaps over, hours<input type="number" id="st-tol" min="0" max="8" step="0.05"></label>
+        <label class="f">End of shift<input type="time" id="st-end" step="60"></label>
+        <label class="f">Check-outs from this time count as end of shift<input type="time" id="st-cutoff" step="60"></label>
+        <label class="f check"><input type="checkbox" id="st-endon"> Use the end-of-shift rule</label>
+        <div class="f-submit"><button class="btn primary" type="submit">Save settings</button></div>
+        <p class="hint">Hours run from the first check-in to the last check-out. Lunch comes off for anyone on site when it starts: someone who leaves before then gets no lunch, and someone who leaves during it gets lunch only until they leave. With the end-of-shift rule on, a check-out at or after the second time counts as the end of shift, an earlier check-out keeps its real time, and an approved correction overrides both.</p>
+      </form>
+      <div class="formgrid">
+        <h3 class="st-h">Supervisor codes</h3>
+        <p class="hint" id="st-codes-who"></p>
+        <ul class="codes" id="st-codes"></ul>
+      </div>
+      <form class="formgrid" id="st-code-add" autocomplete="off">
+        <label class="f">Supervisor’s name<input id="st-code-name" maxlength="40"></label>
+        <label class="f">Their code, 4 to 6 digits<input id="st-code-pin1" type="password" inputmode="numeric" maxlength="6"></label>
+        <label class="f">Type it again<input id="st-code-pin2" type="password" inputmode="numeric" maxlength="6"></label>
+        <div class="f-submit"><button class="btn" type="submit">Add code</button></div>
+        <p class="err" id="st-code-err" role="alert"></p>
+      </form>
+      <form class="formgrid" id="st-pin" autocomplete="off">
+        <label class="f">New main code<input id="st-pin1" type="password" inputmode="numeric" maxlength="6"></label>
+        <label class="f">Type it again<input id="st-pin2" type="password" inputmode="numeric" maxlength="6"></label>
+        <div class="f-submit"><button class="btn" type="submit">Change main code</button></div>
+        <p class="err" id="st-pin-err" role="alert"></p>
+      </form>
+      <div class="formgrid">
+        <label class="f">This tablet’s name<input id="st-dev" maxlength="30" placeholder="Pier 2 tablet"></label>
+        <label class="f">Display<select id="st-theme">
+          <option value="auto">Match the device</option>
+          <option value="light">Light, best in sun</option>
+          <option value="dark">Dark</option>
+        </select></label>
+        <p class="hint">The tablet’s name is saved with every scan made on it, so you can tell stations apart.</p>
+        <div class="f-submit"><button type="button" class="btn quiet" id="st-signout">Sign this tablet out</button></div>
+      </div>
+      <div class="formgrid">
+        <label class="f">Export scans from<input type="date" id="st-from"></label>
+        <label class="f">Through<input type="date" id="st-to"></label>
+        <div class="f-submit"><button class="btn" type="button" id="st-export">Export raw scans</button></div>
+        <p class="hint">Scans, the roster, and corrections are stored in this app’s own database. Export them on a schedule so the company keeps its own copy.</p>
+      </div>
+    </section>
+  </main>
+</section>
+
+<div class="overlay pinov" id="pin-ov" hidden>
+  <div class="pin-box" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+    <h2 id="pin-title">Supervisor code</h2>
+    <div class="dots" id="pin-dots" role="status" aria-live="polite"></div>
+    <p class="err" id="pin-err" role="alert"></p>
+    <div class="keypad small" id="pin-pad" role="group" aria-label="PIN pad"></div>
+    <div class="row"><button type="button" class="btn primary big" id="pin-go">Unlock</button><button type="button" class="btn quiet big" id="pin-cancel">Cancel</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+"use strict";
+
+/* ============================== helpers ============================== */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+function h(tag, attrs) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.slice(0, 2) === "on" && typeof v === "function") el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (let i = 2; i < arguments.length; i++) append(el, arguments[i]);
+  return el;
+}
+function append(el, kid) {
+  if (kid == null || kid === false) return;
+  if (Array.isArray(kid)) { kid.forEach(k => append(el, k)); return; }
+  el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pad2 = n => String(n).padStart(2, "0");
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function dateKey(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function parseKey(k) { const p = String(k).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function addDays(k, n) { const d = parseKey(k); d.setDate(d.getDate() + n); return dateKey(d); }
+function mondayOf(k) { const d = parseKey(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dateKey(d); }
+function atTime(k, hm) { const p = String(hm).split(":").map(Number); const d = parseKey(k); d.setHours(p[0] || 0, p[1] || 0, 0, 0); return d.getTime(); }
+function fmtTime(t) { if (t == null) return ""; const d = new Date(t); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+function fmtTimeSec(t) { const d = new Date(t); return fmtTime(t) + ":" + pad2(d.getSeconds()); }
+function fmtDayShort(k) { const d = parseKey(k); return DOW[d.getDay()] + " " + (d.getMonth() + 1) + "/" + d.getDate(); }
+function fmtDate(k) { const d = parseKey(k); return (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear(); }
+function fmtDayLong(k) { return parseKey(k).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }); }
+function fmtStamp(t) { const d = new Date(t); return (d.getMonth() + 1) + "/" + d.getDate() + " " + fmtTime(t); }
+function fmtHrs(n) { return n == null ? "" : n.toFixed(2); }
+function fmtDiff(n) { if (n == null) return ""; const a = Math.abs(n).toFixed(2); return n > 0.004 ? "+" + a : n < -0.004 ? "\u2212" + a : a; }
+function round2(n) { return Math.round(n * 100) / 100; }
+function num(v, d) { const n = Number(v); return v !== "" && v != null && Number.isFinite(n) ? n : d; }
+function clampNum(v, lo, hi, d) { const n = num(v, d); return Math.min(hi, Math.max(lo, n)); }
+
+const memStore = {};
+const LS = {
+  get(k, d) {
+    try { const v = localStorage.getItem(k); if (v !== null) return JSON.parse(v); } catch (e) { /* storage off */ }
+    return Object.prototype.hasOwnProperty.call(memStore, k) ? memStore[k] : d;
+  },
+  set(k, v) { memStore[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off */ } }
+};
+
+let device = LS.get("cc.device", null);
+if (!device || !device.id) { device = { id: "t" + Math.random().toString(36).slice(2, 10), name: "" }; LS.set("cc.device", device); }
+const OUTBOX = "cc.outbox";
+
+function applyTheme() {
+  const t = LS.get("cc.theme", "auto");
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  else document.documentElement.removeAttribute("data-theme");
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
+
+/* ============================== state ============================== */
+const DEF = { site: "", lunch: 0.5, lunchAfter: 5, tol: 0.25, endOn: true, cutoff: "14:15", shiftEnd: "14:30", lunchOn: true, lunchStart: "11:00", lunchEnd: "11:30" };
+const S = {
+  db: null, user: null, dl: null, canWrite: null, readOnly: false,
+  settings: null, settingsLoaded: false, decided: false,
+  roster: new Map(), rosterLoaded: false,
+  todayKey: dateKey(new Date()), todayScans: [],
+  corrs: [], corrsLoaded: false,
+  mode: "loading", tab: "onsite",
+  crew: "", dailyKey: null, dailyScans: null, open: new Set(),
+  weekKey: null, weekScans: new Map(), weekTS: new Map(), weekLoaded: false,
+  editEmp: null, kioskBlocked: false, fixSig: ""
+};
+function cfg() {
+  const s = S.settings || {};
+  return { site: String(s.site || ""), lunch: num(s.lunch, DEF.lunch), lunchAfter: num(s.lunchAfter, DEF.lunchAfter), tol: num(s.tol, DEF.tol),
+    endOn: s.endOn == null ? DEF.endOn : !!s.endOn, cutoff: hhmm(s.cutoff, DEF.cutoff), shiftEnd: hhmm(s.shiftEnd, DEF.shiftEnd),
+    lunchOn: s.lunchOn == null ? DEF.lunchOn : !!s.lunchOn, lunchStart: hhmm(s.lunchStart, DEF.lunchStart), lunchEnd: hhmm(s.lunchEnd, DEF.lunchEnd) };
+}
+function hhmm(v, d) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(v || ""));
+  return m && +m[1] < 24 && +m[2] < 60 ? pad2(+m[1]) + ":" + m[2] : d;
+}
+
+/* ============================== data shapes ============================== */
+const ID_OK = /^[A-Z0-9][A-Z0-9_\-.]{0,39}$/;
+function normId(s) { return String(s == null ? "" : s).trim().toUpperCase().replace(/\s+/g, ""); }
+function last4Of(id) { const dg = String(id).replace(/\D/g, ""); return dg.length >= 4 ? dg.slice(-4) : null; }
+function roleOf(s) { s = String(s || "").trim().toLowerCase(); return s.indexOf("lead") === 0 ? "Lead" : s.indexOf("sub") === 0 ? "Sub" : "Crew"; }
+function normPerson(id, d) {
+  d = d || {};
+  const empId = normId(d.empId || id);
+  return {
+    empId, name: String(d.name || "").trim() || empId,
+    role: ["Lead", "Crew", "Sub"].indexOf(d.role) >= 0 ? d.role : "Crew",
+    company: String(d.company || ""), crew: String(d.crew || ""),
+    active: d.active !== false, last4: last4Of(empId)
+  };
+}
+function people() { return Array.from(S.roster.values()); }
+function activePeople() { return people().filter(p => p.active); }
+function byName(a, b) { return a.name.localeCompare(b.name); }
+function personName(e) { const p = S.roster.get(e); return p ? p.name : "Unknown #" + e; }
+function roleText(p) { return p.role === "Sub" ? (p.company || "Sub") : p.role; }
+function metaLine(p) { return [p.crew, p.role === "Sub" ? (p.company || "sub") : p.role.toLowerCase()].filter(Boolean).join(" "); }
+function crewMatch(p) { return !S.crew || p.crew === S.crew; }
+
+function scansFrom(data) {
+  const m = (data && data.scans) || {};
+  const out = [];
+  for (const id of Object.keys(m)) {
+    const s = m[id];
+    if (!s || !Number.isFinite(Number(s.t))) continue;
+    out.push({ id, t: Number(s.t), e: normId(s.e), a: s.a === "OUT" ? "OUT" : "IN", d: String(s.d || "") });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+function outbox() { const b = LS.get(OUTBOX, []); return Array.isArray(b) ? b : []; }
+function withOutbox(key, list) {
+  const seen = new Set(list.map(s => s.id));
+  const extra = outbox().filter(o => o.key === key && !seen.has(o.id))
+    .map(o => ({ id: o.id, t: o.scan.t, e: o.scan.e, a: o.scan.a, d: o.scan.d, pending: true }));
+  return extra.length ? list.concat(extra).sort((a, b) => a.t - b.t) : list;
+}
+function todayAll() { return withOutbox(S.todayKey, S.todayScans); }
+function normCorr(id, d) {
+  return {
+    id, date: String(d.date || ""), e: normId(d.e), in: d.in || null, out: d.out || null,
+    x: d.x == null || d.x === "" ? null : Number(d.x),
+    reason: String(d.reason || ""), by: String(d.by || ""), at: Number(d.at) || 0,
+    status: d.status === "approved" || d.status === "withdrawn" ? d.status : "pending",
+    appBy: String(d.appBy || ""), appAt: Number(d.appAt) || 0
+  };
+}
+
+/* lunch scans: an OUT then IN overlapping the lunch window (30 min slack each side) is a tracked lunch;
+   a lone check-out counts as going to lunch from 10 min before it starts */
+function lunchSpan(key, c, early) { return [atTime(key, c.lunchStart) - (early == null ? 30 : early) * 60000, atTime(key, c.lunchEnd) + 30 * 60000]; }
+function scanGaps(mine, key, c) {
+  const seq = mine.slice().sort((a, b) => a.t - b.t), span = lunchSpan(key, c), other = [];
+  let pendingOut = null, lunch = null;
+  for (const s of seq) {
+    if (s.a === "OUT") { if (pendingOut == null) pendingOut = s.t; continue; }
+    if (pendingOut == null) continue;
+    const g = [pendingOut, s.t];
+    pendingOut = null;
+    if (!lunch && g[0] < span[1] && g[1] > span[0]) lunch = g; else other.push(g);
+  }
+  return { seq, lunch, other };
+}
+
+/* status for the live board */
+function statusOf(e, scans) {
+  let firstIn = null, lastIn = null, lastOut = null;
+  for (const s of scans) {
+    if (s.e !== e) continue;
+    if (s.a === "IN") { if (firstIn == null) firstIn = s.t; lastIn = s.t; } else lastOut = s.t;
+  }
+  if (lastIn == null && lastOut == null) return { s: "NOT" };
+  if (lastIn != null && (lastOut == null || lastIn > lastOut)) return { s: "ON", firstIn, lastIn, lastOut };
+  const span = lunchSpan(S.todayKey, cfg(), 10);
+  if (lastOut >= span[0] && lastOut < span[1] && Date.now() < span[1]) return { s: "LUNCH", firstIn, lastIn, lastOut };
+  return { s: "LEFT", firstIn, lastIn, lastOut };
+}
+
+/* hours for one person on one day */
+function dayResult(e, key, scans, corrs, c) {
+  let firstIn = null, lastIn = null, firstOut = null, lastOut = null;
+  const mine = scans.filter(s => s.e === e);
+  for (const s of mine) {
+    if (s.a === "IN") { if (firstIn == null || s.t < firstIn) firstIn = s.t; if (lastIn == null || s.t > lastIn) lastIn = s.t; }
+    else { if (firstOut == null || s.t < firstOut) firstOut = s.t; if (lastOut == null || s.t > lastOut) lastOut = s.t; }
+  }
+  const myC = corrs.filter(x => x.e === e && x.date === key);
+  const approved = myC.filter(x => x.status === "approved").sort((a, b) => a.appAt - b.appAt);
+  let cIn = null, cOut = null, cX = null;
+  for (const x of approved) { if (x.in) cIn = x.in; if (x.out) cOut = x.out; if (x.x != null && Number.isFinite(x.x)) cX = x.x; }
+  const pending = myC.filter(x => x.status === "pending").length;
+  const finalIn = cIn ? atTime(key, cIn) : firstIn;
+  const gaps = scanGaps(mine, key, c), lastEv = gaps.seq[gaps.seq.length - 1], span = lunchSpan(key, c, 10);
+  const endOut = lastEv && lastEv.a === "OUT" ? lastEv.t : null;
+  const outAtLunch = !cOut && endOut != null && endOut >= span[0] && endOut < span[1];
+  const atLunch = outAtLunch && key === S.todayKey && Date.now() < span[1];
+  let finalOut = cOut ? atTime(key, cOut) : atLunch ? null : endOut, endRule = false;
+  if (!cOut && finalOut != null && finalIn != null && c.endOn) {
+    const end = atTime(key, c.shiftEnd);
+    if (finalOut >= atTime(key, c.cutoff) && finalIn < end && finalOut !== end) { finalOut = end; endRule = true; }
+  }
+  let lunchS = null, lunchE = null;
+  if (c.lunchOn && finalIn != null) {
+    const ls = atTime(key, c.lunchStart), le = Math.min(atTime(key, c.lunchEnd), finalOut != null ? finalOut : Infinity);
+    if (finalIn <= ls && le > ls) { lunchS = ls; lunchE = le; }
+  }
+  let net = null;
+  if (finalIn != null && finalOut != null && finalOut > finalIn) {
+    const gross = (finalOut - finalIn) / 3600000;
+    net = Math.max(0, round2(gross - (lunchS != null ? (lunchE - lunchS) / 3600000 : 0) - (cX || 0)));
+  }
+  const flags = [];
+  if (finalIn == null && finalOut != null) flags.push(["No IN scan", "warn"]);
+  if (finalIn != null && finalOut == null) flags.push(atLunch ? ["At lunch", "info"] : key === S.todayKey ? ["Still on site", "info"] : ["No OUT scan", "warn"]);
+  if (outAtLunch && !atLunch) flags.push(["No scan back from lunch", "warn"]);
+  if (finalIn != null && finalOut != null && finalOut <= finalIn) flags.push(["OUT before IN", "warn"]);
+  if (gaps.other.length) flags.push(["Left and came back", "warn"]);
+  if (pending) flags.push(["Correction waiting", "warn"]);
+  if (cIn || cOut || cX != null) flags.push(["Corrected", "info"]);
+  return { firstIn, lastIn, firstOut, lastOut, finalIn, finalOut, endRule, lunchS, lunchE, lunchOut: gaps.lunch ? gaps.lunch[0] : null, lunchIn: gaps.lunch ? gaps.lunch[1] : null, net, flags, scans: mine, corrs: myC,
+    review: flags.some(f => f[1] === "warn"), active: mine.length > 0 || myC.length > 0 };
+}
+
+/* ============================== db plumbing ============================== */
+const chains = new Map();
+function serial(key, fn) {
+  const prev = chains.get(key) || Promise.resolve();
+  const next = prev.catch(() => {}).then(fn);
+  chains.set(key, next);
+  return next;
+}
+function writeErrText(e) {
+  const c = e && e.code;
+  if (c === "invalid_argument" || c === "permission-denied") return "This account can’t save changes in this app.";
+  if (c === "quota_exceeded") return "The app’s storage is full. Export old records, then try again.";
+  if (c === "resource_exhausted" || c === "resource-exhausted" || c === "rate_limited") return "Too many changes at once. Wait a moment and try again.";
+  if (c === "unavailable" || c === "deadline-exceeded") return "Connection problem. Try again in a moment.";
+  if (c === "revoked") return "Access to this app changed. Reload the page.";
+  return "Couldn’t save that change. Try again.";
+}
+async function writeDoc(path, fn, okMsg) {
+  const ref = S.db.doc(path);
+  try { await serial(path, () => fn(ref)); if (okMsg) toast(okMsg); return true; }
+  catch (e) { toast(writeErrText(e)); return false; }
+}
+function subErr(e) {
+  console.warn("db subscription", e);
+  if (e && e.code === "revoked") toast("Access to this app changed. Reload the page.");
+}
+
+async function writeScan(key, id, scan) {
+  const ref = S.db.doc("scans/" + key);
+  return serial(ref.path, () => ref.set({ date: key, scans: { [id]: scan } }, { merge: true }));
+}
+let flushing = false;
+async function flushOutbox() {
+  if (flushing || !S.db) return;
+  flushing = true;
+  try {
+    for (const item of outbox()) {
+      try {
+        await writeScan(item.key, item.id, item.scan);
+        LS.set(OUTBOX, outbox().filter(x => x.id !== item.id));
+        S.kioskBlocked = false;
+      } catch (e) {
+        if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) S.kioskBlocked = true;
+        break;
+      }
+    }
+  } finally {
+    flushing = false;
+    renderSync();
+  }
+}
+
+/* ============================== boot ============================== */
+async function boot() {
+  applyTheme();
+  wire();
+  tick(); setInterval(tick, 1000);
+  const conf = window.CREW_FIREBASE || {};
+  if (!window.firebase || !conf.apiKey || /PASTE/i.test(conf.apiKey)) { setMode("nodb"); return; }
+  try {
+    firebase.initializeApp(conf);
+    S.db = firebase.firestore();
+    try { S.db.settings({ ignoreUndefinedProperties: true }); } catch (e) { /* settings already applied */ }
+    S.auth = firebase.auth();
+  } catch (e) {
+    $("#nodb-msg").textContent = "The Firebase settings in firebase-config.js didn’t work. Check them, then reload.";
+    setMode("nodb"); return;
+  }
+  S.dl = { save: saveBlob };
+  S.auth.onAuthStateChanged(onAuth);
+}
+function onAuth(u) {
+  if (!u) { if (S.started) location.reload(); else showSignIn(); return; }
+  if (S.started) return;
+  const conf = window.CREW_FIREBASE || {};
+  S.canWrite = String(u.email || "").toLowerCase() === String(conf.tabletEmail || "").toLowerCase();
+  S.started = true;
+  setMode("loading");
+  startCore();
+}
+function showSignIn() {
+  const conf = window.CREW_FIREBASE || {};
+  $("#si-site").textContent = conf.siteName || "Crew check-in";
+  $("#si-tablet").hidden = true; $("#si-board").hidden = false; $("#si-show-tablet").hidden = false;
+  setMode("signin");
+  setTimeout(() => $("#si-code").focus(), 50);
+}
+function authErrText(e) {
+  const c = (e && e.code) || "";
+  if (c === "auth/too-many-requests") return "Too many tries. Wait a few minutes, then try again.";
+  if (c === "auth/network-request-failed") return "No connection. Check the Wi-Fi, then try again.";
+  return "";
+}
+async function boardSignIn(ev) {
+  ev.preventDefault();
+  const conf = window.CREW_FIREBASE || {}, code = $("#si-code").value.trim(), err = $("#si-err");
+  if (!/^\d{4,8}$/.test(code)) { err.textContent = "Enter the digits of your board code."; return; }
+  err.textContent = "Checking…";
+  try { await S.auth.signInWithEmailAndPassword(conf.boardEmail, (conf.boardPrefix || "board-") + code); err.textContent = ""; }
+  catch (e) { err.textContent = authErrText(e) || "That code isn’t right."; $("#si-code").value = ""; }
+}
+async function tabletSignIn(ev) {
+  ev.preventDefault();
+  const email = $("#si-email").value.trim(), pass = $("#si-pass").value, err = $("#si-terr");
+  if (!email || !pass) { err.textContent = "Enter the tablet account’s email and password."; return; }
+  err.textContent = "Signing in…";
+  try { await S.auth.signInWithEmailAndPassword(email, pass); err.textContent = ""; $("#si-pass").value = ""; }
+  catch (e) { err.textContent = authErrText(e) || "That email and password didn’t work."; }
+}
+async function saveBlob({ filename, data }) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: /\.csv$/i.test(filename) ? "text/csv;charset=utf-8" : "application/octet-stream" });
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = filename; a.rel = "noopener";
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return { status: "saved" };
+}
+function mainPin() { return S.secret && S.secret.pin && S.secret.pin.hash ? S.secret.pin : null; }
+async function importData(file) {
+  const msg = $("#su-imp-msg");
+  let data = null;
+  try { data = JSON.parse(await file.text()); } catch (e) { data = null; }
+  if (!data || data.format !== "crew-checkin-export" || !data.docs) { msg.textContent = "That isn’t a data file from the check-in app."; return; }
+  const entries = Object.entries(data.docs).filter(([p, d]) => /^[A-Za-z0-9_-]+\/[A-Za-z0-9_.~:@+-]+$/.test(p) && d && typeof d === "object");
+  msg.textContent = "Importing…";
+  try {
+    for (let i = 0; i < entries.length; i += 300) {
+      const batch = S.db.batch();
+      entries.slice(i, i + 300).forEach(([p, d]) => batch.set(S.db.doc(p), d));
+      await batch.commit();
+      msg.textContent = "Importing… " + Math.min(entries.length, i + 300) + " of " + entries.length;
+    }
+  } catch (e) { msg.textContent = writeErrText(e); return; }
+  msg.textContent = "Imported " + entries.length + " records.";
+  toast("Data imported");
+  if (data.docs["config/settings"]) S.settings = data.docs["config/settings"];
+  if (data.docs["config/secret"]) S.secret = data.docs["config/secret"];
+  S.decided = false; decide();
+}
+function startCore() {
+  if (S.canWrite) {
+    S.db.doc("config/secret").onSnapshot(snap => {
+      S.secret = snap.exists ? (snap.data() || {}) : {};
+      S.secretLoaded = true; decide(); renderAll();
+    }, subErr);
+  } else S.secretLoaded = true;
+  S.db.doc("config/settings").onSnapshot(snap => {
+    S.settings = snap.exists ? (snap.data() || {}) : null;
+    S.settingsLoaded = true;
+    const site = cfg().site || "Crew check-in";
+    $("#k-site").textContent = site; $("#s-site").textContent = site;
+    decide(); renderAll();
+  }, subErr);
+  S.db.collection("roster").onSnapshot(qs => {
+    const m = new Map();
+    for (const d of qs.docs) { const p = normPerson(d.id, d.data()); m.set(p.empId, p); }
+    S.roster = m; S.rosterLoaded = true; renderAll();
+  }, subErr);
+  if (S.canWrite) S.db.collection("corrections").onSnapshot(qs => {
+    S.corrs = qs.docs.map(d => normCorr(d.id, d.data() || {}));
+    S.corrsLoaded = true; renderAll();
+  }, subErr);
+  subToday();
+  setInterval(rollover, 20000);
+  setInterval(flushOutbox, 30000);
+  flushOutbox();
+}
+let unToday = null;
+function subToday() {
+  if (unToday) unToday();
+  const key = S.todayKey;
+  S.todayScans = [];
+  unToday = S.db.doc("scans/" + key).onSnapshot(snap => {
+    if (key !== S.todayKey) return;
+    S.todayScans = snap.exists ? scansFrom(snap.data()) : [];
+    renderAll();
+  }, subErr);
+}
+function rollover() {
+  const k = dateKey(new Date());
+  if (k !== S.todayKey) { S.todayKey = k; subToday(); renderAll(); }
+}
+const ALL_TABS = ["onsite", "daily", "week", "fixes", "roster", "station", "board"];
+const RO_TABS = ["board"];
+function decide() {
+  if (S.decided || !S.settingsLoaded || !S.secretLoaded) return;
+  S.decided = true;
+  const want = (location.hash || "").slice(1);
+  if (S.canWrite === false) {
+    S.readOnly = true; setMode("sup"); setTab("board"); return;
+  }
+  if (!S.settings || !mainPin()) { setMode("setup"); return; }
+  setMode("kiosk");
+  if (ALL_TABS.indexOf(want) >= 0) openPin(want);
+}
+function setMode(m) {
+  S.mode = m;
+  for (const v of ["loading", "nodb", "signin", "setup", "kiosk", "sup"]) $("#v-" + v).hidden = v !== m;
+  if (m === "kiosk") { closeOv(); leaveTab(); S.supWho = null; }
+  if (m === "sup") {
+    $("#ro-note").hidden = !S.readOnly; $("#s-exit").hidden = S.readOnly;
+    for (const b of $$("#tabs [data-tab]")) b.hidden = S.readOnly && RO_TABS.indexOf(b.dataset.tab) < 0;
+    $("#w-import-btn").hidden = S.readOnly;
+  }
+  if (m === "setup") setTimeout(() => $("#su-site").focus(), 50);
+  renderAll();
+}
+function renderAll() {
+  if (S.mode === "kiosk") renderKiosk();
+  else if (S.mode === "sup") renderTab();
+}
+
+/* ============================== kiosk ============================== */
+const BACK_SVG = '<svg viewBox="0 0 40 28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M13 2h23a2 2 0 0 1 2 2v20a2 2 0 0 1-2 2H13L2 14z"/><path d="M19 9l10 10M29 9L19 19"/></svg>';
+function buildPad(box, onKey) {
+  box.textContent = "";
+  for (const k of ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"]) {
+    const b = h("button", { type: "button", class: "key" + (k.length > 1 ? " fn" : ""), "aria-label": k === "back" ? "Delete last digit" : k === "clear" ? "Clear" : null });
+    if (k === "back") b.innerHTML = BACK_SVG; else b.textContent = k === "clear" ? "Clear" : k;
+    b.addEventListener("click", () => onKey(k));
+    box.append(b);
+  }
+}
+let kDigits = "", kLock = false, ovTimer = null;
+function renderPlates(justAdded) {
+  const box = $("#k-plates"); box.textContent = "";
+  for (let i = 0; i < 4; i++) {
+    const ch = kDigits[i];
+    const cls = "plate" + (ch ? "" : " empty") + (i === kDigits.length ? " next" : "") + (justAdded && i === kDigits.length - 1 ? " filled" : "");
+    box.append(h("span", { class: cls, "aria-hidden": "true" }, ch || ""));
+  }
+  box.setAttribute("aria-label", kDigits.length ? kDigits.length + " of 4 digits entered" : "No digits entered");
+}
+function setNote(text, kind) { const n = $("#k-note"); n.textContent = text || ""; n.className = "k-note" + (kind ? " " + kind : ""); }
+function kPress(k) {
+  if (kLock || !$("#k-ov").hidden || !$("#pin-ov").hidden) return;
+  let added = false;
+  if (k === "back") kDigits = kDigits.slice(0, -1);
+  else if (k === "clear") kDigits = "";
+  else if (/^\d$/.test(k) && kDigits.length < 4) { kDigits += k; added = true; }
+  renderPlates(added);
+  renderKioskNote();
+  if (kDigits.length === 4) { kLock = true; setTimeout(() => { kLock = false; kLookup(); }, 170); }
+}
+function renderKiosk() { renderKioskNote(); renderSync(); }
+function renderKioskNote() {
+  if (S.rosterLoaded && !activePeople().length) setNote("No crew on the roster yet. A supervisor needs to add the roster first.", "warn");
+  else if ($("#k-note").className.indexOf("warn") >= 0 && !kDigits) setNote("");
+}
+function renderSync() {
+  const el = $("#k-sync"); const n = outbox().length;
+  if (S.kioskBlocked) { el.textContent = "This tablet can’t save scans. Sign in with an account that can edit this app."; el.className = "sync bad"; }
+  else if (n) { el.textContent = n + (n === 1 ? " scan" : " scans") + " saved on this tablet, waiting to upload"; el.className = "sync wait"; }
+  else { el.textContent = ""; el.className = "sync"; }
+}
+function tick() {
+  const now = new Date();
+  const c = $("#k-clock"); if (c) c.textContent = pad2(now.getHours()) + ":" + pad2(now.getMinutes());
+  const d = $("#k-date"); if (d) d.textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+function openOv(node, ms, cls) {
+  const ov = $("#k-ov");
+  clearTimeout(ovTimer);
+  ov.className = "overlay" + (cls ? " " + cls : "");
+  ov.textContent = ""; ov.append(node); ov.hidden = false;
+  if (ms) ovTimer = setTimeout(closeOv, ms);
+  const f = ov.querySelector("[data-autofocus]"); if (f) f.focus();
+}
+function closeOv() {
+  clearTimeout(ovTimer);
+  const ov = $("#k-ov"); ov.hidden = true; ov.textContent = ""; ov.className = "overlay";
+  kDigits = ""; renderPlates(); renderKioskNote();
+}
+function kLookup() {
+  const d = kDigits;
+  if (!S.rosterLoaded) { setNote("Still loading the roster. Try again in a moment.", "warn"); kDigits = ""; renderPlates(); return; }
+  const hits = activePeople().filter(p => p.last4 === d).sort(byName);
+  if (!hits.length) return showMsg("No match for " + d, "No one on the roster has an employee number ending in those 4 digits. Check the number, or see your lead.");
+  if (hits.length === 1) return showConfirm(hits[0]);
+  showPick(hits, d);
+}
+function showMsg(title, text) {
+  openOv(h("div", { class: "ov msg" },
+    h("h2", { text: title }), h("p", { text }),
+    h("button", { type: "button", class: "btn primary big", "data-autofocus": true, onclick: closeOv }, "OK")), 7000);
+}
+function showPick(list, d) {
+  openOv(h("div", { class: "ov pick" },
+    h("h2", { text: "Tap your name" }),
+    h("p", { class: "ov-meta", text: "More than one employee number ends in " + d + "." }),
+    h("div", { class: "picklist" }, list.map(p => h("button", { type: "button", class: "pickbtn", onclick: () => showConfirm(p) },
+      h("span", { class: "pn", text: p.name }), h("span", { class: "pm", text: metaLine(p) })))),
+    h("button", { type: "button", class: "linkish ov-cancel", onclick: closeOv }, "None of these")), 20000);
+}
+function showConfirm(p) {
+  const st = statusOf(p.empId, todayAll());
+  const expect = st.s === "ON" ? "OUT" : "IN";
+  const other = expect === "IN" ? "OUT" : "IN";
+  const line = st.s === "ON" ? "On site since " + fmtTime(st.lastIn)
+    : st.s === "LUNCH" ? "Out for lunch since " + fmtTime(st.lastOut) : st.s === "LEFT" ? "Checked out at " + fmtTime(st.lastOut) : "Not checked in yet today";
+  const btn = (a, primary) => h("button", {
+    type: "button", class: "act " + (a === "IN" ? "in" : "out") + (primary ? "" : " secondary"),
+    "data-autofocus": primary ? true : null, onclick: () => kAct(p, a)
+  }, a === "IN" ? "Check in" : "Check out");
+  openOv(h("div", { class: "ov confirm" },
+    h("p", { class: "ov-q", text: "Is this you?" }),
+    h("h2", { class: "ov-name", text: p.name }),
+    h("p", { class: "ov-meta", text: metaLine(p) }),
+    h("p", { class: "ov-status", text: line }),
+    h("div", { class: "ov-actions" }, btn(expect, true), btn(other, false)),
+    h("button", { type: "button", class: "linkish ov-cancel", onclick: closeOv }, "Not me")), 20000);
+}
+function kAct(p, a) {
+  const mine = todayAll().filter(s => s.e === p.empId);
+  const last = mine[mine.length - 1];
+  if (last && last.a === a && Date.now() - last.t < 120000) {
+    return showMsg(a === "IN" ? "Already checked in" : "Already checked out",
+      p.name + " checked " + (a === "IN" ? "in" : "out") + " at " + fmtTime(last.t) + ". Nothing new was recorded.");
+  }
+  const t = Date.now();
+  const item = { key: dateKey(new Date(t)), id: t.toString(36) + "-" + Math.random().toString(36).slice(2, 6),
+    scan: { t, e: p.empId, a, d: device.name || device.id } };
+  LS.set(OUTBOX, outbox().concat([item]));
+  showDone(p, a, t, mine);
+  renderSync();
+  flushOutbox();
+}
+function showDone(p, a, t, prior) {
+  let extra = "";
+  const span = lunchSpan(dateKey(new Date(t)), cfg(), 10), last = prior[prior.length - 1];
+  if (a === "OUT" && t >= span[0] && t < span[1]) extra = "If you’re going to lunch, check back in when you return.";
+  else if (a === "OUT") { const ins = prior.filter(s => s.a === "IN"); if (ins.length) extra = "In at " + fmtTime(ins[0].t) + ", out at " + fmtTime(t); }
+  else if (last && last.a === "OUT" && last.t >= span[0] && last.t < span[1]) extra = "Welcome back from lunch.";
+  openOv(h("div", { class: "done " + (a === "IN" ? "in" : "out"), onclick: closeOv },
+    h("h2", { text: a === "IN" ? "Checked in" : "Checked out" }),
+    h("p", { class: "done-time", text: fmtTime(t) }),
+    h("p", { class: "done-name", text: p.name }),
+    extra ? h("p", { class: "done-extra", text: extra }) : null), 3400, "bare");
+}
+
+/* ============================== PIN ============================== */
+let pinDigits = "", pinNext = "onsite", pinFails = 0, pinLockUntil = 0;
+function openPin(next) {
+  if (!mainPin()) { setMode("setup"); return; }
+  pinNext = next || "onsite"; pinDigits = ""; $("#pin-err").textContent = "";
+  renderPinDots(); $("#pin-ov").hidden = false; $("#pin-go").focus();
+}
+function closePin() { $("#pin-ov").hidden = true; pinDigits = ""; }
+function pinPress(k) {
+  if (k === "back") pinDigits = pinDigits.slice(0, -1);
+  else if (k === "clear") pinDigits = "";
+  else if (/^\d$/.test(k) && pinDigits.length < 6) pinDigits += k;
+  $("#pin-err").textContent = "";
+  renderPinDots();
+}
+function renderPinDots() {
+  const box = $("#pin-dots"); box.textContent = "";
+  for (let i = 0; i < Math.max(4, pinDigits.length); i++) box.append(h("span", { class: "dot" + (i < pinDigits.length ? " on" : "") }));
+  box.setAttribute("aria-label", pinDigits.length + " digits entered");
+}
+function randSalt() {
+  const a = new Uint8Array(12);
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
+  return Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
+}
+async function hashPin(pin, salt) {
+  const data = new TextEncoder().encode(salt + ":" + pin);
+  try {
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+    }
+  } catch (e) { /* fall through */ }
+  let x = 2166136261;
+  for (const b of data) { x ^= b; x = Math.imul(x, 16777619) >>> 0; }
+  return "f" + x.toString(16);
+}
+async function pinSubmit() {
+  const err = $("#pin-err");
+  if (Date.now() < pinLockUntil) { err.textContent = "Too many wrong tries. Wait a minute, then try again."; return; }
+  if (pinDigits.length < 4) { err.textContent = "Enter at least 4 digits."; return; }
+  const pin = mainPin();
+  if (!pin) { closePin(); setMode("setup"); return; }
+  let who = null;
+  if (await hashPin(pinDigits, pin.salt) === pin.hash) who = "";
+  else for (const cd of codeList()) { if (await hashPin(pinDigits, cd.salt) === cd.hash) { who = cd.name; break; } }
+  if (who != null) { pinFails = 0; S.supWho = who; closePin(); setMode("sup"); setTab(pinNext); if (who) toast("Unlocked by " + who); return; }
+  pinFails++; pinDigits = ""; renderPinDots();
+  if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; err.textContent = "Too many wrong tries. Wait a minute, then try again."; }
+  else err.textContent = "That code isn’t right.";
+}
+
+/* ============================== setup ============================== */
+async function setupSubmit(ev) {
+  ev.preventDefault();
+  const site = $("#su-site").value.trim(), p1 = $("#su-pin").value.trim(), p2 = $("#su-pin2").value.trim();
+  const err = $("#su-err");
+  if (!/^\d{4,6}$/.test(p1)) { err.textContent = "Use 4 to 6 digits for the PIN."; return; }
+  if (p1 !== p2) { err.textContent = "The two PINs don’t match."; return; }
+  err.textContent = "";
+  const salt = randSalt();
+  const hash = await hashPin(p1, salt);
+  const ref = S.db.doc("config/settings"), sec = S.db.doc("config/secret");
+  try {
+    await serial(sec.path, () => sec.set({ pin: { salt, hash } }, { merge: true }));
+    await serial(ref.path, () => ref.set({ site, lunch: DEF.lunch, lunchAfter: DEF.lunchAfter, tol: DEF.tol, createdAt: Date.now() }));
+    S.settings = { site, lunch: DEF.lunch, lunchAfter: DEF.lunchAfter, tol: DEF.tol };
+    S.secret = Object.assign({}, S.secret, { pin: { salt, hash } });
+    S.supWho = "";
+    setMode("sup"); setTab("roster");
+    toast("Station set up. Add the crew next.");
+  } catch (e) { err.textContent = writeErrText(e); }
+}
+
+/* ============================== supervisor shell ============================== */
+let tabSubs = [], lastActivity = Date.now();
+function leaveTab() { tabSubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } }); tabSubs = []; }
+function setTab(t) {
+  const allowed = S.readOnly ? RO_TABS : ALL_TABS;
+  if (allowed.indexOf(t) < 0) t = "onsite";
+  leaveTab();
+  S.tab = t; S.fixSig = "";
+  $("#v-sup").classList.toggle("boardmode", t === "board"); boardWake(t === "board");
+  for (const b of $$("#tabs [data-tab]")) { const on = b.dataset.tab === t; b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; }
+  for (const p of $$("main .panel")) p.hidden = p.id !== "p-" + t;
+  if (t === "daily") { if (!S.dailyKey) S.dailyKey = S.todayKey; subDaily(); }
+  if (t === "week") { if (!S.weekKey) S.weekKey = mondayOf(S.todayKey); subWeek(); }
+  if (t === "fixes") prepFixForm(true);
+  if (t === "station") fillStation();
+  renderTab();
+  window.scrollTo(0, 0);
+}
+function lockSup() { if (S.readOnly) return; leaveTab(); setMode("kiosk"); }
+function updateBadge() {
+  const n = S.corrs.filter(x => x.status === "pending").length;
+  const b = $("#fix-badge"); b.textContent = n; b.hidden = !n || S.readOnly;
+}
+let crewSig = "";
+function fillCrewSelects() {
+  const crews = Array.from(new Set(people().map(p => p.crew).filter(Boolean))).sort();
+  const sig = crews.join("|");
+  if (sig !== crewSig) {
+    crewSig = sig;
+    for (const sel of $$(".crewsel")) {
+      sel.textContent = "";
+      sel.append(h("option", { value: "" }, "All crews"));
+      crews.forEach(c => sel.append(h("option", { value: c }, c)));
+    }
+    const dl = $("#crewlist"); dl.textContent = ""; crews.forEach(c => dl.append(h("option", { value: c })));
+    if (S.crew && crews.indexOf(S.crew) < 0) S.crew = "";
+  }
+  for (const sel of $$(".crewsel")) sel.value = S.crew;
+}
+function renderTab() {
+  if (S.mode !== "sup") return;
+  updateBadge(); fillCrewSelects();
+  if (S.tab === "onsite") renderOnsite();
+  else if (S.tab === "daily") renderDaily();
+  else if (S.tab === "week") renderWeek();
+  else if (S.tab === "fixes") renderFixes();
+  else if (S.tab === "roster") renderRoster();
+  else if (S.tab === "station") renderCodes();
+  else if (S.tab === "board") renderBoard();
+}
+function stats(el, items) {
+  el.textContent = "";
+  for (const it of items) el.append(h("div", { class: "stat" + (it[2] ? " " + it[2] : "") }, h("b", { text: String(it[0]) }), h("span", { text: it[1] })));
+}
+function emptyRow(cols, text) { return h("tr", {}, h("td", { colspan: cols, class: "empty", text })); }
+function chip(s) {
+  return s === "ON" ? h("span", { class: "chip on" }, "On site") : s === "LUNCH" ? h("span", { class: "chip lunch" }, "At lunch") : s === "LEFT" ? h("span", { class: "chip left" }, "Left") : h("span", { class: "chip not" }, "Not in");
+}
+function flagNodes(flags) { return flags.map(f => h("span", { class: "flag " + f[1], text: f[0] })); }
+
+/* ---------- On site ---------- */
+function renderOnsite() {
+  $("#on-date").textContent = fmtDayLong(S.todayKey);
+  const scans = todayAll();
+  const rows = activePeople().filter(crewMatch).map(p => ({ p, st: statusOf(p.empId, scans) }));
+  const order = { ON: 0, LUNCH: 1, LEFT: 2, NOT: 3 };
+  rows.sort((a, b) => order[a.st.s] - order[b.st.s] || byName(a.p, b.p));
+  const n = { ON: 0, LUNCH: 0, LEFT: 0, NOT: 0 }; rows.forEach(r => { n[r.st.s]++; });
+  stats($("#on-stats"), [[n.ON, "on site"]].concat(n.LUNCH ? [[n.LUNCH, "at lunch"]] : [], [[n.LEFT, "left for the day"], [n.NOT, "not in yet"]]));
+  const body = $("#on-body"); body.textContent = "";
+  if (!rows.length) body.append(emptyRow(7, S.roster.size ? "No one on this crew." : "The roster is empty. Add the crew on the Roster tab."));
+  for (const r of rows) {
+    const st = r.st, p = r.p;
+    const g = st.s === "NOT" ? null : scanGaps(scans.filter(x => x.e === p.empId), S.todayKey, cfg());
+    const note = g && g.other.length ? "Came back after checking out" : st.s !== "NOT" && !st.firstIn ? "Checked out without checking in"
+      : g && g.lunch ? "Lunch " + fmtTime(g.lunch[0]) + "–" + fmtTime(g.lunch[1]) : "";
+    body.append(h("tr", {},
+      h("td", {}, chip(st.s)), h("td", { class: "strong", text: p.name }), h("td", { text: p.crew }),
+      h("td", { text: roleText(p) }), h("td", { class: "num", text: fmtTime(st.firstIn) }),
+      h("td", { class: "num", text: st.s === "LEFT" || st.s === "LUNCH" ? fmtTime(st.lastOut) : "" }), h("td", { class: "note", text: note })));
+  }
+}
+
+/* ---------- Board ---------- */
+let wakeLock = null;
+function boardWake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock && document.visibilityState === "visible") {
+      navigator.wakeLock.request("screen").then(l => { wakeLock = l; l.addEventListener("release", () => { wakeLock = null; }); }).catch(() => {});
+    } else if (!on && wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  } catch (e) { /* the screen may still sleep; the board keeps working */ }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.mode === "sup" && S.tab === "board") boardWake(true); });
+function renderBoard() {
+  const scans = todayAll();
+  $("#b-site").textContent = cfg().site || "Crew check-in";
+  $("#b-date").textContent = fmtDayLong(S.todayKey);
+  $("#b-exit").textContent = S.readOnly ? "Sign out" : "Exit board";
+  $("#b-clock").textContent = fmtTime(Date.now());
+  const g = { ON: [], LUNCH: [], LEFT: [], NOT: [] };
+  activePeople().filter(crewMatch).sort(byName).forEach(p => { const st = statusOf(p.empId, scans); g[st.s].push({ p, st }); });
+  stats($("#b-stats"), [[g.ON.length, "on site"], [g.LUNCH.length, "at lunch"], [g.LEFT.length, "left for the day"], [g.NOT.length, "not in yet"]]);
+  const col = (cls, title, list, timeOf, none) => h("section", { class: "b-col " + cls },
+    h("h3", {}, h("span", { text: title }), h("b", { text: String(list.length) })),
+    list.length ? h("ul", {}, list.map(x => h("li", {}, h("strong", { text: x.p.name }), h("span", { text: timeOf(x.st) })))) : h("p", { class: "b-none", text: none }));
+  const cols = $("#b-cols");
+  cols.textContent = "";
+  cols.append(
+    col("on", "On site", g.ON, st => "in " + fmtTime(st.firstIn != null ? st.firstIn : st.lastIn), "Nobody yet"),
+    col("lunch", "At lunch", g.LUNCH, st => "out " + fmtTime(st.lastOut), "Nobody at lunch"),
+    col("left", "Left for the day", g.LEFT, st => "out " + fmtTime(st.lastOut), "Nobody has left"),
+    g.NOT.length > 60
+      ? h("section", { class: "b-col not" }, h("h3", {}, h("span", { text: "Not in yet" }), h("b", { text: String(g.NOT.length) })), h("p", { class: "b-none", text: "Too many to list. Pick a crew to see names." }))
+      : col("not", "Not in yet", g.NOT, () => "", "Everyone’s in"));
+}
+
+/* ---------- Daily ---------- */
+function subDaily() {
+  leaveTab(); S.dailyScans = null;
+  const key = S.dailyKey;
+  if (key === S.todayKey) return;
+  tabSubs.push(S.db.doc("scans/" + key).onSnapshot(snap => {
+    if (S.dailyKey !== key) return;
+    S.dailyScans = snap.exists ? scansFrom(snap.data()) : [];
+    renderTab();
+  }, subErr));
+}
+function dailyScans() { return S.dailyKey === S.todayKey ? todayAll() : withOutbox(S.dailyKey, S.dailyScans || []); }
+function dailyRows() {
+  const key = S.dailyKey, scans = dailyScans(), c = cfg();
+  const ids = new Set(scans.map(s => s.e));
+  S.corrs.forEach(x => { if (x.date === key && x.status !== "withdrawn") ids.add(x.e); });
+  return Array.from(ids).map(e => S.roster.get(e) || { empId: e, name: "Unknown #" + e, crew: "", role: "Crew", company: "", active: false })
+    .filter(crewMatch).sort(byName).map(p => ({ p, r: dayResult(p.empId, key, scans, S.corrs, c) }));
+}
+function renderDaily() {
+  const key = S.dailyKey;
+  $("#d-date").value = key; $("#d-long").textContent = fmtDayLong(key);
+  refreshFill();
+  const body = $("#d-body"); body.textContent = "";
+  if (key !== S.todayKey && S.dailyScans === null) { body.append(emptyRow(8, "Loading…")); return; }
+  const rows = dailyRows();
+  const present = rows.filter(x => x.r.finalIn != null).length;
+  const total = round2(rows.reduce((s, x) => s + (x.r.net || 0), 0));
+  const review = rows.filter(x => x.r.review).length;
+  stats($("#d-stats"), [[present, "checked in"], [total.toFixed(2), "hours"], [review, "need a look", review ? "warn" : ""]]);
+  if (!rows.length) body.append(emptyRow(8, key > S.todayKey ? "That day hasn’t happened yet." : "No scans on this day."));
+  for (const x of rows) {
+    const p = x.p, r = x.r, isOpen = S.open.has(key + "|" + p.empId);
+    const tr = h("tr", { class: "clickable" + (r.review ? " review" : ""), tabindex: "0", "aria-expanded": isOpen ? "true" : "false" },
+      h("td", { class: "strong", text: p.name }), h("td", { text: p.empId }), h("td", { text: p.crew }),
+      h("td", { class: "num", text: fmtTime(r.finalIn) }), h("td", { class: "num" }, fmtTime(r.finalOut), r.endRule ? h("span", { class: "scan-at", text: "scan " + fmtTime(r.lastOut) }) : null),
+      h("td", { class: "num" }, r.lunchS != null ? fmtTime(r.lunchS) + "–" + fmtTime(r.lunchE) : "", r.lunchOut != null ? h("span", { class: "scan-at", text: "scans " + fmtTime(r.lunchOut) + "–" + fmtTime(r.lunchIn) }) : null),
+      h("td", { class: "num strong", text: fmtHrs(r.net) }), h("td", { class: "flags" }, flagNodes(r.flags)));
+    const toggle = () => { const k = key + "|" + p.empId; if (S.open.has(k)) S.open.delete(k); else S.open.add(k); renderTab(); };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+    body.append(tr);
+    if (isOpen) {
+      const items = r.scans.map(s => h("li", { text: fmtTimeSec(s.t) + "  " + s.a + (s.d ? "  (" + s.d + ")" : "") + (s.pending ? "  waiting to upload" : "") }));
+      r.corrs.forEach(cx => items.push(h("li", { text: "Correction: " + fixChanges(cx) + ". " + cx.reason + " " + fixStatus(cx) })));
+      body.append(h("tr", { class: "detail" }, h("td", { colspan: 8 }, items.length ? h("ul", {}, items) : "No scans.")));
+    }
+  }
+  const hc = cfg();
+  $("#d-hint").textContent = "Hours run from the first check-in to the last check-out" + (hc.lunchOn ? ", less lunch from " + hc.lunchStart + " to " + hc.lunchEnd + " for anyone on site at " + hc.lunchStart : "") + ", with approved corrections applied."
+    + (hc.endOn ? " A check-out at " + hc.cutoff + " or later counts as " + hc.shiftEnd + "; an earlier one keeps its time." : "") + " Lunch scans show under Lunch for tracking only; they don’t change hours or the DCTTS. Tap a row to see every scan.";
+}
+function exportDaily() {
+  const key = S.dailyKey;
+  const rows = [["Date", "Employee #", "Name", "Crew", "Role", "Company", "In", "Out", "Out scan", "Lunch", "Lunch scans", "Hours", "Flags"]];
+  for (const x of dailyRows()) rows.push([fmtDate(key), x.p.empId, x.p.name, x.p.crew, x.p.role, x.p.company, fmtTime(x.r.finalIn), fmtTime(x.r.finalOut), fmtTime(x.r.lastOut), x.r.lunchS != null ? fmtTime(x.r.lunchS) + "-" + fmtTime(x.r.lunchE) : "", x.r.lunchOut != null ? fmtTime(x.r.lunchOut) + "-" + fmtTime(x.r.lunchIn) : "", fmtHrs(x.r.net), x.r.flags.map(f => f[0]).join("; ")]);
+  saveCSV("daily-times-" + key + ".csv", rows);
+}
+
+/* ---------- MUSTER and DCTTS fill ---------- */
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+function xmlEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function xmlUnesc(s) {
+  return String(s).replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);/g, (m, e) => {
+    if (e === "amp") return "&"; if (e === "lt") return "<"; if (e === "gt") return ">";
+    if (e === "quot") return '"'; if (e === "apos") return "'";
+    const n = e.charAt(1) === "x" || e.charAt(1) === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+    return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+  });
+}
+function colNum(col) { let n = 0; for (let i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64); return n; }
+function splitRef(ref) { const m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? [m[1], Number(m[2])] : null; }
+function serialKey(v) { const d = new Date(1899, 11, 30); d.setDate(d.getDate() + Math.floor(v)); return dateKey(d); }
+function dayFraction(t) { const d = new Date(t); return (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400; }
+function normName(n) { return String(n || "").toLowerCase().replace(/\s+/g, " ").trim(); }
+function nameParts(n) {
+  const s = String(n || "").toLowerCase().replace(/\(.*?\)/g, " ").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, " ").replace(/[^a-z,\s'\-]/g, " ");
+  const parts = s.split(",").map(x => x.trim().replace(/\s+/g, " ")).filter(Boolean);
+  if (parts.length >= 2) return { last: parts[0], first: parts[parts.length - 1].split(" ")[0] };
+  const w = s.trim().split(/\s+/).filter(Boolean);
+  return w.length > 1 ? { last: w[w.length - 1], first: w[0] } : { last: w[0] || "", first: "" };
+}
+function matchByName(name) {
+  const k = nameParts(name);
+  if (!k.last) return null;
+  const hits = people().filter(p => {
+    const q = nameParts(p.name);
+    return q.last === k.last && (q.first === k.first || (q.first && k.first && (q.first.indexOf(k.first) === 0 || k.first.indexOf(q.first) === 0)));
+  });
+  return hits.length === 1 ? hits[0].empId : null;
+}
+function textOf(inner) {
+  return (inner.match(/<t\b[^>]*>[\s\S]*?<\/t>/g) || []).map(x => xmlUnesc(x.replace(/^<t\b[^>]*>|<\/t>$/g, ""))).join("");
+}
+function sheetCells(xml, shared) {
+  const cells = new Map();
+  const re = /<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+  let m;
+  while ((m = re.exec(xml))) {
+    const attrs = m[2], inner = m[3] || "";
+    const t = (/\bt="([^"]*)"/.exec(attrs) || [])[1] || "";
+    let text = "", num = null;
+    if (t === "inlineStr") text = textOf(inner);
+    else {
+      const v = /<v>([\s\S]*?)<\/v>/.exec(inner);
+      if (v) {
+        if (t === "s") text = shared[Number(v[1])] || "";
+        else if (t === "str" || t === "e" || t === "b") text = xmlUnesc(v[1]);
+        else { num = Number(v[1]); text = v[1]; }
+      }
+    }
+    cells.set(m[1], { text: text.trim(), num: Number.isFinite(num) ? num : null });
+  }
+  return cells;
+}
+async function readBook(file) {
+  const zip = await window.JSZip.loadAsync(file, { createFolders: false });
+  const wbFile = zip.file("xl/workbook.xml"), relFile = zip.file("xl/_rels/workbook.xml.rels");
+  if (!wbFile || !relFile) throw new Error("not a workbook");
+  const wbXml = await wbFile.async("string"), relXml = await relFile.async("string");
+  const rels = {};
+  (relXml.match(/<Relationship\b[^>]*>/g) || []).forEach(tag => {
+    const id = /\bId="([^"]+)"/.exec(tag), tg = /\bTarget="([^"]+)"/.exec(tag);
+    if (id && tg) rels[id[1]] = xmlUnesc(tg[1]);
+  });
+  const ssFile = zip.file("xl/sharedStrings.xml");
+  const shared = ssFile ? ((await ssFile.async("string")).match(/<si\b[^>]*>[\s\S]*?<\/si>/g) || []).map(textOf) : [];
+  const sheets = [];
+  for (const tag of (wbXml.match(/<sheet\b[^>]*>/g) || [])) {
+    const name = xmlUnesc((/\bname="([^"]*)"/.exec(tag) || [])[1] || "");
+    const rid = (/\b\w+:id="([^"]+)"/.exec(tag) || [])[1];
+    const target = rels[rid];
+    if (!target) continue;
+    const path = target.charAt(0) === "/" ? target.slice(1) : "xl/" + target.replace(/^\.\//, "");
+    const f = zip.file(path);
+    if (f) sheets.push({ name, path, rid, xml: await f.async("string") });
+  }
+  return { file, zip, shared, sheets };
+}
+function analyzeSheet(sh, shared) {
+  const cells = sheetCells(sh.xml, shared);
+  let date = null, dateRef = null, hdr = null;
+  const hdrCells = [];
+  const cols = {};
+  for (const [ref, c] of cells) {
+    const p = splitRef(ref);
+    if (!p) continue;
+    if (date == null && p[1] <= 3 && c.num != null && c.num > 40000 && c.num < 80000) { date = serialKey(c.num); dateRef = ref; }
+    if (hdr == null && /^EMPLOYEE NAME/.test(c.text.toUpperCase())) { hdr = p[1]; cols.name = p[0]; }
+  }
+  if (hdr == null || !date) return null;
+  for (const [ref, c] of cells) {
+    const p = splitRef(ref);
+    if (!p || p[1] !== hdr) continue;
+    const up = c.text.toUpperCase().replace(/\s+/g, " ").trim();
+    if (up) hdrCells.push({ col: p[0], text: up });
+    if (up === "IN") cols.in = p[0];
+    else if (up === "OUT") cols.out = p[0];
+    else if (up === "START TIME") cols.start = p[0];
+    else if (up.indexOf("EMPLOYEE NUMBER") === 0) cols.num = p[0];
+    else if (up.indexOf("MEAL") === 0) cols.meal = p[0];
+  }
+  const kind = cols.in && cols.out ? "muster" : cols.start ? "dctts" : null;
+  if (!kind) return null;
+  const rows = [];
+  for (const [ref, c] of cells) {
+    const p = splitRef(ref);
+    if (!p || p[0] !== cols.name || p[1] <= hdr || !c.text) continue;
+    if (/^(\*|proxy|date\b|total)/i.test(c.text)) break;
+    if (!/[a-z]/i.test(c.text)) continue;
+    const num = cols.num ? normId((cells.get(cols.num + p[1]) || {}).text || "") : "";
+    rows.push({ row: p[1], name: c.text, num });
+  }
+  return { kind, date, dateRef, cols, rows, hdrCells };
+}
+function setCell(xml, ref, value, asText) {
+  const build = attrs => {
+    attrs = attrs.replace(/\s+t="[^"]*"/, "").replace(/\s*\/$/, "");
+    return asText ? '<c r="' + ref + '"' + attrs + ' t="inlineStr"><is><t>' + xmlEsc(value) + "</t></is></c>"
+      : '<c r="' + ref + '"' + attrs + "><v>" + value + "</v></c>";
+  };
+  const m = new RegExp('<c r="' + ref + '"([^>]*?)(\\/>|>[\\s\\S]*?<\\/c>)').exec(xml);
+  if (m) return xml.slice(0, m.index) + build(m[1]) + xml.slice(m.index + m[0].length);
+  const p = splitRef(ref);
+  const rm = new RegExp('<row r="' + p[1] + '"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/row>)').exec(xml);
+  if (!rm) return null;
+  let row = rm[0];
+  if (!/<\/row>$/.test(row)) row = row.replace(/\/>$/, "></row>");
+  const target = colNum(p[0]);
+  const cre = /<c r="([A-Z]+)\d+"/g;
+  let cm, pos = -1;
+  while ((cm = cre.exec(row))) { if (colNum(cm[1]) > target) { pos = cm.index; break; } }
+  const nc = build("");
+  row = pos >= 0 ? row.slice(0, pos) + nc + row.slice(pos) : row.replace(/<\/row>$/, nc + "</row>");
+  return xml.slice(0, rm.index) + row + xml.slice(rm.index + rm[0].length);
+}
+async function loadScansRange(a, b) {
+  const qs = await S.db.collection("scans").where("date", ">=", a).where("date", "<=", b).get();
+  const got = new Map();
+  qs.docs.forEach(d => { const data = d.data() || {}; got.set(String(data.date || d.id), scansFrom(data)); });
+  const out = new Map();
+  for (let k = a; k <= b; k = addDays(k, 1)) out.set(k, k === S.todayKey ? todayAll() : withOutbox(k, got.get(k) || []));
+  return out;
+}
+function fillSheet(xml, info, key, scans, dctNames, c, sum) {
+  for (const r of info.rows) {
+    const e = r.num || dctNames.get(normName(r.name)) || matchByName(r.name);
+    if (!e || !S.roster.has(e)) { if (sum) sum.missing.add(r.name); continue; }
+    const res = dayResult(e, key, scans, S.corrs, c);
+    const w = [];
+    if (info.kind === "muster") {
+      if (res.finalIn != null) w.push([info.cols.in + r.row, String(dayFraction(res.finalIn)), false]);
+      if (res.finalOut != null) w.push([info.cols.out + r.row, String(dayFraction(res.finalOut)), false]);
+      if (sum && res.finalIn != null && res.finalOut == null && key < S.todayKey) sum.noOut.push(r.name + " " + fmtDayShort(key));
+    } else if (res.finalIn != null) {
+      w.push([info.cols.start + r.row, fmtTime(res.finalIn), true]);
+      if (info.cols.meal) w.push([info.cols.meal + r.row, res.lunchS != null ? "(1) " + fmtTime(res.lunchS) + "-" + fmtTime(res.lunchE) : "(1)", true]);
+    }
+    for (const x of w) { const nx = setCell(xml, x[0], x[1], x[2]); if (nx != null) xml = nx; }
+    if (sum && w.length) { sum.people.add(r.name); sum.days.add(key); }
+  }
+  return xml;
+}
+const WD_UP = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+function xmlAttr(s) { return xmlEsc(s).replace(/"/g, "&quot;"); }
+function setAttr(tag, name, val) {
+  const re = new RegExp("\\b" + name + '="[^"]*"'), pair = name + '="' + val + '"';
+  return re.test(tag) ? tag.replace(re, () => pair) : tag.replace(/^<([\w:]+)/, (m, t) => "<" + t + " " + pair);
+}
+function serialOf(k) { const d = parseKey(k); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 86400000); }
+function cellRe(ref) { return new RegExp('<c r="' + ref + '"([^>]*?)(\\/>|>([\\s\\S]*?)<\\/c>)'); }
+function emptyCell(xml, ref) {
+  const m = cellRe(ref).exec(xml);
+  if (!m || !m[3]) return xml;
+  const attrs = m[1].replace(/\s+t="[^"]*"/, "").replace(/\s*\/$/, "");
+  return xml.slice(0, m.index) + '<c r="' + ref + '"' + attrs + "/>" + xml.slice(m.index + m[0].length);
+}
+function setLabel(xml, ref, label) {
+  const m = cellRe(ref).exec(xml);
+  if (!m) return xml;
+  return textOf(m[3] || "").trim() === label ? xml : (setCell(xml, ref, label, true) || xml);
+}
+function clearEntries(xml, info) {
+  const entry = info.hdrCells.filter(x => info.kind === "muster" ? /HOURS|^IN$|^OUT$|TOTAL|SIGNATURE/.test(x.text) : /START TIME|HOURS|SIGNATURE|NOTES/.test(x.text)).map(x => x.col);
+  const meal = info.kind === "dctts" ? (info.hdrCells.find(x => /MEAL/.test(x.text)) || {}).col : null;
+  for (const r of info.rows) {
+    const rows = info.kind === "dctts" ? [r.row, r.row + 1] : [r.row];
+    for (const rr of rows) for (const col of entry) xml = emptyCell(xml, col + rr);
+    if (meal) { xml = setLabel(xml, meal + r.row, "(1)"); xml = setLabel(xml, meal + (r.row + 1), "(2)"); }
+  }
+  return xml;
+}
+function redateHeader(xml, from, to) {
+  return xml.replace(/<headerFooter\b[\s\S]*?<\/headerFooter>/, hf => hf.split(fmtDayLong(from)).join(fmtDayLong(to)).split(fmtDate(from)).join(fmtDate(to)));
+}
+function renameFor(name, from, to) {
+  const f = parseKey(from), t = parseKey(to), fa = WD_UP[f.getDay()], ta = WD_UP[t.getDay()];
+  let n = name;
+  if (fa !== ta) n = n.replace(new RegExp("\\b" + fa + "\\b", "i"), m => m === fa ? ta : ta.charAt(0) + ta.slice(1).toLowerCase());
+  const fmd = (f.getMonth() + 1) + "-" + f.getDate();
+  n = n.replace(new RegExp("(^|\\D)" + fmd + "(?!\\d)"), (m, pre) => pre + (t.getMonth() + 1) + "-" + t.getDate());
+  return n.slice(0, 31);
+}
+function templateDay(b, k) {
+  const wd = parseKey(k).getDay();
+  return b.days.find(d => parseKey(d).getDay() === wd) || b.days[0];
+}
+async function buildPrintCopy(b, k) {
+  const c = cfg();
+  const from = b.days.indexOf(k) >= 0 ? null : templateDay(b, k);
+  const targets = b.sheets.filter(sh => sh.info && sh.info.date === (from || k));
+  if (!targets.length) throw new Error("no day sheets");
+  const scans = (await loadScansRange(k, k)).get(k) || [];
+  const zip = await window.JSZip.loadAsync(b.file, { createFolders: false });
+  let wb = await zip.file("xl/workbook.xml").async("string");
+  const names = S.fillNames || new Map(), taken = new Set(b.sheets.map(sh => sh.name)), renames = new Map();
+  for (const sh of targets) {
+    let xml = sh.xml;
+    if (from) {
+      xml = clearEntries(xml, sh.info);
+      if (sh.info.dateRef) xml = setCell(xml, sh.info.dateRef, String(serialOf(k)), false) || xml;
+      xml = redateHeader(xml, from, k);
+      const nn = renameFor(sh.name, from, k);
+      const bare = new RegExp("(^|[^'\\w])" + sh.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "!").test(wb);
+      if (nn !== sh.name && !taken.has(nn) && !bare) { renames.set(sh.name, nn); taken.add(nn); }
+    }
+    zip.file(sh.path, fillSheet(xml, sh.info, k, scans, names, c, null), { createFolders: false });
+  }
+  for (const sh of b.sheets) {
+    const f = zip.file(sh.path);
+    if (!f) continue;
+    let xml = await f.async("string");
+    const sel = /\stabSelected="1"/.test(xml), first = sh === targets[0];
+    if (first && !sel) xml = xml.replace(/<sheetView\b/, '<sheetView tabSelected="1"');
+    else if (!first && sel) xml = xml.replace(/\s+tabSelected="1"/g, "");
+    else continue;
+    zip.file(sh.path, xml, { createFolders: false });
+  }
+  const tset = new Set(targets.map(t => t.rid)), hidden = new Set();
+  let i = 0, firstIdx = -1;
+  wb = wb.replace(/<sheet\b[^>]*>/g, tag => {
+    const at = i++;
+    if (/\bstate="veryHidden"/.test(tag)) { hidden.add(at); return tag; }
+    const isT = tset.has((/\b\w+:id="([^"]+)"/.exec(tag) || [])[1]);
+    if (isT && firstIdx < 0) firstIdx = at;
+    if (!isT) hidden.add(at);
+    let t2 = setAttr(tag, "state", isT ? "visible" : "hidden");
+    const nm = xmlUnesc((/\bname="([^"]*)"/.exec(t2) || [])[1] || "");
+    if (isT && renames.has(nm)) t2 = setAttr(t2, "name", xmlAttr(renames.get(nm)));
+    return t2;
+  });
+  const fi = Math.max(firstIdx, 0);
+  wb = wb.replace(/<workbookView\b[^>]*>/, tag => setAttr(setAttr(tag, "activeTab", fi), "firstSheet", fi));
+  wb = wb.replace(/<definedName\b[^>]*>[\s\S]*?<\/definedName>/g, dn => {
+    const ls = /\blocalSheetId="(\d+)"/.exec(dn), nm = (/\bname="([^"]*)"/.exec(dn) || [])[1] || "";
+    return ls && hidden.has(Number(ls[1])) && /^_xlnm\.Print_(Area|Titles)$/.test(nm) ? "" : dn;
+  }).replace(/<definedNames>\s*<\/definedNames>/, "");
+  for (const [o, n] of renames) wb = wb.split("'" + xmlEsc(o) + "'!").join("'" + xmlEsc(n) + "'!");
+  zip.file("xl/workbook.xml", wb, { createFolders: false });
+  const app = zip.file("docProps/app.xml");
+  if (app && renames.size) {
+    let ax = await app.async("string");
+    for (const [o, n] of renames) ax = ax.split(">" + xmlEsc(o) + "<").join(">" + xmlEsc(n) + "<");
+    zip.file("docProps/app.xml", ax, { createFolders: false });
+  }
+  return zip.generateAsync({ type: "blob", mimeType: XLSX_MIME, compression: "DEFLATE" });
+}
+function printName(b, k) {
+  const m = /(DDG|LPD|LHD|LHA|LSD|CVN|LCS|CG)[ _-]?(\d+)/i.exec(b.file.name), d = parseKey(k);
+  return (m ? m[1].toUpperCase() + "-" + m[2] + " " : "") + b.label + " " + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "-" + String(d.getFullYear()).slice(2) + ".xlsx";
+}
+async function saveDayFile(b, btn) {
+  const k = S.dailyKey || S.todayKey;
+  btn.disabled = true;
+  try {
+    const blob = await buildPrintCopy(b, k);
+    const r = await S.dl.save({ filename: printName(b, k), data: blob });
+    if (r && r.status === "saved") toast("Saved the " + b.label + " for " + fmtDayShort(k));
+  } catch (e) {
+    if (!(e && e.code === "declined")) toast("Couldn’t make the " + b.label + ". Try again.");
+  } finally { btn.disabled = false; }
+}
+const TPL_KINDS = ["muster", "dctts"], TPL_PART = 180000;
+function b64FromBytes(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function bytesFromB64(b64) { const s = atob(b64), u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
+function analyzeBook(b) {
+  for (const sh of b.sheets) sh.info = analyzeSheet(sh, b.shared);
+  const days = b.sheets.filter(sh => sh.info);
+  b.kind = days.length ? days[0].info.kind : null;
+  b.label = b.kind === "muster" ? "MUSTER" : "DCTTS";
+  b.days = Array.from(new Set(days.map(sh => sh.info.date))).sort();
+  return b;
+}
+function dayStats(b, k, scans) {
+  const c = cfg(), sum = { people: new Set(), days: new Set(), missing: new Set(), noOut: [] };
+  const from = b.days.indexOf(k) >= 0 ? null : templateDay(b, k);
+  for (const sh of b.sheets) if (sh.info && sh.info.date === (from || k)) fillSheet(sh.xml, sh.info, k, scans, S.fillNames || new Map(), c, sum);
+  return sum;
+}
+function jszipReady() {
+  return new Promise(res => { const t0 = Date.now(); (function poll() { if (window.JSZip) res(true); else if (Date.now() - t0 > 10000) res(false); else setTimeout(poll, 150); })(); });
+}
+async function loadSavedBooks() {
+  S.tplCache = S.tplCache || {};
+  const out = [];
+  for (const kind of TPL_KINDS) {
+    const snap = await S.db.doc("templates/" + kind).get();
+    if (!snap.exists) continue;
+    const m = snap.data() || {};
+    const hit = S.tplCache[kind];
+    if (hit && hit.ver === m.ver) { out.push(hit.book); continue; }
+    const parts = await Promise.all(Array.from({ length: m.parts || 1 }, (x, i) => S.db.doc("templates/" + kind + "-" + m.ver + "-" + i).get()));
+    const b64 = parts.map(p => (p.exists && (p.data() || {}).d) || "").join("");
+    const book = analyzeBook(await readBook(new File([bytesFromB64(b64)], m.name || kind + ".xlsx", { type: XLSX_MIME })));
+    if (!book.kind) continue;
+    S.tplCache[kind] = { ver: m.ver, book };
+    out.push(book);
+  }
+  return out;
+}
+async function saveTemplate(kind, name, bytes) {
+  const b64 = b64FromBytes(bytes), ver = Date.now().toString(36), parts = Math.max(1, Math.ceil(b64.length / TPL_PART));
+  const meta = S.db.doc("templates/" + kind);
+  let old = null;
+  try { const s = await meta.get(); old = s.exists ? s.data() : null; } catch (e) { old = null; }
+  for (let i = 0; i < parts; i++) {
+    const ref = S.db.doc("templates/" + kind + "-" + ver + "-" + i);
+    await serial(ref.path, () => ref.set({ d: b64.slice(i * TPL_PART, (i + 1) * TPL_PART) }));
+  }
+  await serial(meta.path, () => meta.set({ kind, name: name.replace(/^\d{10,}_/, ""), size: bytes.length, parts, ver, savedAt: Date.now() }));
+  if (old && old.ver && old.ver !== ver) {
+    for (let i = 0; i < (old.parts || 1); i++) { try { await S.db.doc("templates/" + kind + "-" + old.ver + "-" + i).delete(); } catch (e) { /* a leftover old piece is harmless */ } }
+  }
+}
+async function replaceSaved(files) {
+  const msg = $("#fill-msg");
+  msg.textContent = "Saving…";
+  if (!(await jszipReady())) { msg.textContent = "Couldn’t load the workbook tool. Check the connection and try again."; return; }
+  const bad = [];
+  let saved = 0;
+  for (const f of files) {
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const book = /\.xlsx$/i.test(f.name) ? analyzeBook(await readBook(new File([bytes], f.name, { type: XLSX_MIME }))) : null;
+      if (!book || !book.kind) { bad.push(f.name); continue; }
+      await saveTemplate(book.kind, f.name, bytes);
+      saved++;
+    } catch (e) {
+      if (e && e.code) { msg.textContent = writeErrText(e); return; }
+      bad.push(f.name);
+    }
+  }
+  msg.textContent = bad.length ? "Not a MUSTER or DCTTS workbook: " + bad.join("; ") + "." : "";
+  if (saved) { toast(saved === 1 ? "Workbook saved" : "Workbooks saved"); await openFill(true); }
+}
+let fillRun = 0, fillTimer = 0;
+async function openFill(keepMsg) {
+  $("#d-fill").hidden = false;
+  $("#d-fill-pick").hidden = S.readOnly;
+  const run = ++fillRun, msg = $("#fill-msg");
+  if (keepMsg !== true) msg.textContent = "Loading the saved workbooks…";
+  if (!(await jszipReady())) { msg.textContent = "Couldn’t load the workbook tool. Check the connection and try again."; return; }
+  let books;
+  try { books = await loadSavedBooks(); }
+  catch (e) { if (run === fillRun) msg.textContent = "Couldn’t load the saved workbooks. Try again."; return; }
+  if (run !== fillRun) return;
+  if (keepMsg !== true) msg.textContent = "";
+  S.tplBooks = books;
+  S.fillNames = new Map();
+  const dct = books.find(b => b.kind === "dctts");
+  if (dct) dct.sheets.forEach(sh => { if (sh.info) sh.info.rows.forEach(r => { if (r.num) S.fillNames.set(normName(r.name), r.num); }); });
+  renderFill();
+}
+function refreshFill() {
+  if ($("#d-fill").hidden || !S.tplBooks) return;
+  clearTimeout(fillTimer);
+  fillTimer = setTimeout(renderFill, 150);
+}
+function renderFill() {
+  const out = $("#fill-out"), pick = $("#d-fill-pick"), k = S.dailyKey || S.todayKey;
+  const books = (S.tplBooks || []).slice().sort((a, b) => TPL_KINDS.indexOf(a.kind) - TPL_KINDS.indexOf(b.kind));
+  pick.textContent = books.length ? "Replace saved workbooks" : "Choose workbooks";
+  pick.className = books.length ? "btn" : "btn primary";
+  $("#fill-saved").textContent = books.length ? "Saved workbooks: " + books.map(b => b.file.name).join(" and ") + "." : "";
+  out.textContent = "";
+  if (!books.length) {
+    out.append(h("p", { text: S.readOnly ? "No workbooks are saved yet. A supervisor can add them here." : "No workbooks are saved yet. Choose the MUSTER and DCTTS once, and the app keeps them for every day." }));
+    return;
+  }
+  const loading = k !== S.todayKey && S.dailyScans === null;
+  const scans = loading ? [] : dailyScans();
+  for (const b of books) {
+    const sum = dayStats(b, k, scans);
+    const info = h("div", {}, h("strong", { text: b.label + " for " + fmtDayShort(k) }));
+    if (loading) info.append(h("p", { class: "sub", text: "Loading this day’s scans…" }));
+    else if (!sum.people.size) info.append(h("p", { text: "No scans for this day yet, so it will have the date and names but no times." }));
+    else info.append(h("p", { text: (b.kind === "muster" ? "IN and OUT" : "START TIME") + " filled for " + sum.people.size + (sum.people.size === 1 ? " person." : " people.") }));
+    if (sum.noOut.length) info.append(h("p", { class: "warn", text: "No OUT scan: " + sum.noOut.map(x => x.slice(0, -(fmtDayShort(k).length + 1))).join(", ") + "." }));
+    if (sum.missing.size) info.append(h("p", { class: "sub", text: "Not on the app roster, so left blank: " + Array.from(sum.missing).join("; ") + "." }));
+    const save = h("button", { type: "button", class: "btn primary" }, "Save " + b.label);
+    save.addEventListener("click", () => saveDayFile(b, save));
+    out.append(h("div", { class: "fill-row" }, info, save));
+  }
+}
+
+/* ---------- Week ---------- */
+function subWeek() {
+  leaveTab();
+  S.weekScans = new Map(); S.weekTS = new Map(); S.weekLoaded = false;
+  const a = S.weekKey, b = addDays(a, 6);
+  tabSubs.push(S.db.collection("scans").where("date", ">=", a).where("date", "<=", b).onSnapshot(qs => {
+    if (S.weekKey !== a) return;
+    const m = new Map();
+    for (const d of qs.docs) { const data = d.data() || {}; m.set(String(data.date || d.id), scansFrom(data)); }
+    S.weekScans = m; S.weekLoaded = true; renderTab();
+  }, subErr));
+  tabSubs.push(S.db.collection("timesheets").where("date", ">=", a).where("date", "<=", b).onSnapshot(qs => {
+    if (S.weekKey !== a) return;
+    const m = new Map();
+    for (const d of qs.docs) { const data = d.data() || {}; m.set(String(data.date || d.id), data.h || {}); }
+    S.weekTS = m; renderTab();
+  }, subErr));
+}
+function weekDays() { const out = []; for (let i = 0; i < 7; i++) out.push(addDays(S.weekKey, i)); return out; }
+function weekScansFor(k) { return k === S.todayKey ? todayAll() : withOutbox(k, S.weekScans.get(k) || []); }
+function weekModel() {
+  const days = weekDays(), c = cfg();
+  const ids = new Set(activePeople().map(p => p.empId));
+  days.forEach(k => weekScansFor(k).forEach(s => ids.add(s.e)));
+  const list = Array.from(ids).map(e => S.roster.get(e) || { empId: e, name: "Unknown #" + e, crew: "", role: "Crew", company: "", active: false })
+    .filter(crewMatch).sort(byName);
+  let off = 0, miss = 0;
+  const rows = list.map(p => {
+    let scanTot = 0, any = false, sheetM = 0, scanM = 0, matched = 0;
+    const cells = days.map(k => {
+      const r = dayResult(p.empId, k, weekScansFor(k), S.corrs, c);
+      const tsDay = S.weekTS.get(k);
+      const raw = tsDay ? tsDay[p.empId] : undefined;
+      const ts = raw == null || raw === "" || !Number.isFinite(Number(raw)) ? null : Number(raw);
+      let cls = "", diff = null, note = "";
+      if (r.net != null) { scanTot += r.net; any = true; }
+      if (ts != null && r.net != null) {
+        diff = round2(ts - r.net); scanM += r.net; sheetM += ts; matched++;
+        if (Math.abs(diff) > c.tol + 1e-9) { cls = "bad"; off++; }
+      } else if (r.net == null && k === S.todayKey && r.finalIn != null && r.finalOut == null) { note = "still on site"; }
+      else if (ts != null && r.net == null) { cls = "miss"; note = "no scan hours"; miss++; }
+      else if (ts == null && r.net != null && tsDay) { cls = "miss"; note = "not on timesheet"; miss++; }
+      else if (r.net == null && r.scans.length) cls = "check";
+      return { k, r, ts, diff, cls, note };
+    });
+    return { p, cells, scanTot: any ? round2(scanTot) : null, matched, sheetM: round2(sheetM), diffM: matched ? round2(sheetM - scanM) : null };
+  });
+  return { days, rows, off, miss, anyTS: days.some(k => S.weekTS.has(k)) };
+}
+function renderWeek() {
+  $("#w-label").textContent = fmtDate(S.weekKey); $("#w-date").value = S.weekKey;
+  const m = weekModel(), c = cfg();
+  const head = $("#w-head"); head.textContent = "";
+  head.append(h("tr", {}, h("th", {}, "Name"), m.days.map(k => h("th", { class: "day" }, fmtDayShort(k))), h("th", { class: "day" }, "Week")));
+  const body = $("#w-body"); body.textContent = "";
+  if (!S.weekLoaded && S.weekKey !== mondayOf(S.todayKey)) { body.append(emptyRow(9, "Loading…")); return; }
+  if (!m.rows.length) body.append(emptyRow(9, "No one to show for this week."));
+  for (const row of m.rows) {
+    const tr = h("tr", {}, h("td", { class: "strong", text: row.p.name }));
+    for (const cell of row.cells) {
+      const title = cell.r.flags.map(f => f[0]).join("; ");
+      const td = h("td", { class: "wcell " + cell.cls, title: title || null });
+      const main = cell.r.net != null ? fmtHrs(cell.r.net) : cell.cls === "check" ? "check" : "";
+      td.append(h("span", { class: "wh", text: main }));
+      if (cell.ts != null) td.append(h("span", { class: "wts", text: "sheet " + cell.ts.toFixed(2) + (cell.diff != null ? " (" + fmtDiff(cell.diff) + ")" : "") }));
+      if (cell.note) td.append(h("span", { class: "wts", text: cell.note }));
+      tr.append(td);
+    }
+    const tot = h("td", { class: "wcell tot" + (row.diffM != null && Math.abs(row.diffM) > c.tol + 1e-9 ? " bad" : "") });
+    tot.append(h("span", { class: "wh", text: row.scanTot != null ? fmtHrs(row.scanTot) : "" }));
+    if (row.matched) tot.append(h("span", { class: "wts", text: "sheet " + row.sheetM.toFixed(2) + " (" + fmtDiff(row.diffM) + ")" }));
+    tr.append(tot);
+    body.append(tr);
+  }
+  if (m.anyTS) stats($("#w-stats"), [[m.off, "days off by more than " + c.tol + " h", m.off ? "warn" : ""], [m.miss, "days on only one side", m.miss ? "warn" : ""]]);
+  else $("#w-stats").textContent = "";
+  $("#w-hint").textContent = m.anyTS
+    ? "Each day shows scanned hours, then the timesheet hours and the difference (timesheet minus scans). The week total compares only days that have both."
+    : "Import timesheet hours to see them next to the scans. “check” means scans without a complete in and out.";
+}
+function exportWeek() {
+  const m = weekModel();
+  const head = ["Employee #", "Name", "Crew"];
+  m.days.forEach(k => head.push(fmtDayShort(k) + " scan", fmtDayShort(k) + " timesheet", fmtDayShort(k) + " diff"));
+  head.push("Week scan", "Week timesheet (matched days)", "Week diff (matched days)");
+  const rows = [head];
+  for (const r of m.rows) {
+    const line = [r.p.empId, r.p.name, r.p.crew];
+    r.cells.forEach(cl => line.push(fmtHrs(cl.r.net), cl.ts != null ? cl.ts.toFixed(2) : "", cl.diff != null ? cl.diff.toFixed(2) : cl.note));
+    line.push(r.scanTot != null ? r.scanTot.toFixed(2) : "", r.matched ? r.sheetM.toFixed(2) : "", r.diffM != null ? r.diffM.toFixed(2) : "");
+    rows.push(line);
+  }
+  saveCSV("week-" + S.weekKey + ".csv", rows);
+}
+function scanRows(keys, byKey) {
+  const rows = [["Date", "Time", "Employee #", "Name", "Action", "Tablet", "Scan ID"]];
+  for (const k of keys) for (const s of byKey(k)) rows.push([fmtDate(k), fmtTimeSec(s.t), s.e, personName(s.e), s.a, s.d, s.id]);
+  return rows;
+}
+function exportWeekScans() { saveCSV("scans-" + S.weekKey + ".csv", scanRows(weekDays(), weekScansFor)); }
+
+function cells(line) { return line.indexOf("\t") >= 0 ? line.split("\t").map(s => s.trim()) : splitCSV(line); }
+function splitCSV(line) {
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+function parseDateLoose(s) {
+  s = String(s || "").trim();
+  const mk = (y, mo, d) => (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) ? y + "-" + pad2(mo) + "-" + pad2(d) : null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return mk(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return mk(y, +m[1], +m[2]); }
+  return null;
+}
+async function importTS() {
+  const msg = $("#w-import-msg");
+  const lines = $("#w-paste").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rows = [], bad = [];
+  lines.forEach((l, i) => {
+    const c = cells(l);
+    const key = parseDateLoose(c[0]), emp = normId(c[1]), hrs = parseFloat(String(c[2] || "").replace(/[^0-9.\-]/g, ""));
+    if (!key || !emp || !Number.isFinite(hrs)) { if (i > 0) bad.push(i + 1); return; }
+    rows.push({ key, emp, hrs });
+  });
+  if (!rows.length) { msg.textContent = "Nothing to import. Each row needs a date, an employee #, and hours."; return; }
+  const byDay = new Map(), unknown = new Set();
+  for (const r of rows) {
+    if (!S.roster.has(r.emp)) unknown.add(r.emp);
+    const m = byDay.get(r.key) || new Map();
+    m.set(r.emp, round2((m.get(r.emp) || 0) + r.hrs));
+    byDay.set(r.key, m);
+  }
+  msg.textContent = "Importing…";
+  try {
+    for (const [key, m] of byDay) {
+      const ref = S.db.doc("timesheets/" + key);
+      await serial(ref.path, async () => {
+        const snap = await ref.get();
+        const next = Object.assign({}, snap.exists ? ((snap.data() || {}).h || {}) : {});
+        for (const [e, v] of m) next[e] = v;
+        await ref.set({ date: key, h: next, importedAt: Date.now() });
+      });
+    }
+    msg.textContent = "Imported " + rows.length + (rows.length === 1 ? " row" : " rows") + " across " + byDay.size + (byDay.size === 1 ? " day." : " days.")
+      + (unknown.size ? " " + unknown.size + " employee # not on the roster." : "")
+      + (bad.length ? " Skipped line " + bad.slice(0, 10).join(", ") + "." : "");
+  } catch (e) { msg.textContent = writeErrText(e); }
+}
+
+/* ---------- Corrections ---------- */
+function fixChanges(x) {
+  return [x.in && "in " + x.in, x.out && "out " + x.out, x.x != null && x.x + " h unpaid"].filter(Boolean).join(", ") || "no change";
+}
+function fixStatus(x) {
+  return x.status === "approved" ? "(approved by " + x.appBy + ")" : x.status === "withdrawn" ? "(withdrawn)" : "(waiting for approval)";
+}
+function prepFixForm(reset) {
+  const sel = $("#f-emp"), cur = sel.value;
+  sel.textContent = "";
+  sel.append(h("option", { value: "" }, "Choose a person"));
+  activePeople().sort(byName).forEach(p => sel.append(h("option", { value: p.empId }, p.name + "  (" + p.empId + ")")));
+  sel.value = cur;
+  if (reset) {
+    if (!$("#f-date").value) $("#f-date").value = S.todayKey;
+    if (S.supWho) $("#f-by").value = S.supWho;
+    else if (!$("#f-by").value) $("#f-by").value = LS.get("cc.by", "");
+  }
+}
+function renderFixes() {
+  const f = $("#f-filter").value;
+  const sig = f + "#" + S.roster.size + "#" + S.corrs.map(x => x.id + x.status + x.appAt).join(",");
+  if ($("#f-emp").options.length !== activePeople().length + 1) prepFixForm(false);
+  if (sig === S.fixSig) return;
+  S.fixSig = sig;
+  const cutoff = addDays(S.todayKey, -30);
+  let list = S.corrs.slice();
+  if (f === "pending") list = list.filter(x => x.status === "pending");
+  else if (f === "recent") list = list.filter(x => x.date >= cutoff);
+  list.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
+  const box = $("#f-list"); box.textContent = "";
+  if (!list.length) box.append(h("p", { class: "empty", text: f === "pending" ? "Nothing is waiting for approval." : "No corrections in this view." }));
+  for (const x of list) box.append(fixItem(x));
+}
+function fixItem(x) {
+  const status = x.status === "approved" ? "Approved by " + x.appBy + (x.appAt ? " on " + fmtStamp(x.appAt) : "")
+    : x.status === "withdrawn" ? "Withdrawn" : "Waiting for approval";
+  return h("article", { class: "fix " + x.status },
+    h("div", {},
+      h("p", { class: "fix-who" }, h("strong", { text: personName(x.e) }), h("span", { text: DOW[parseKey(x.date).getDay()] + " " + fmtDate(x.date) })),
+      h("p", { class: "fix-what", text: fixChanges(x).replace(/^./, ch => ch.toUpperCase()) }),
+      h("p", { class: "fix-why", text: x.reason }),
+      h("p", { class: "fix-meta", text: "Entered by " + x.by + (x.at ? " on " + fmtStamp(x.at) : "") + ". " + status + "." })),
+    x.status === "pending" ? approveControls(x) : null);
+}
+function approveControls(x) {
+  const inp = h("input", { maxlength: "60", placeholder: "Approver’s name", "aria-label": "Approver’s name", value: S.supWho || null });
+  const go = h("button", { type: "button", class: "btn primary" }, "Approve");
+  go.addEventListener("click", async () => {
+    const n = inp.value.trim();
+    if (!n) { inp.focus(); toast("Type the approver’s name first."); return; }
+    go.disabled = true;
+    const ok = await writeDoc("corrections/" + x.id, r => r.update({ status: "approved", appBy: n, appAt: Date.now() }), "Correction approved");
+    if (!ok) go.disabled = false;
+  });
+  const wd = h("button", { type: "button", class: "btn quiet" }, "Withdraw");
+  wd.addEventListener("click", () => writeDoc("corrections/" + x.id, r => r.update({ status: "withdrawn", wdAt: Date.now() }), "Correction withdrawn"));
+  return h("div", { class: "fix-act" }, inp, go, wd);
+}
+async function addFix(ev) {
+  ev.preventDefault();
+  const err = $("#f-err");
+  const date = $("#f-date").value, e = $("#f-emp").value, tin = $("#f-in").value, tout = $("#f-out").value;
+  const xRaw = $("#f-x").value.trim(), reason = $("#f-reason").value.trim(), by = $("#f-by").value.trim();
+  if (!date || !e) { err.textContent = "Pick the date and the person."; return; }
+  if (!tin && !tout && !xRaw) { err.textContent = "Enter a corrected in time, out time, or unpaid hours."; return; }
+  if (tin && tout && tout <= tin) { err.textContent = "The out time has to be after the in time."; return; }
+  const x = xRaw ? clampNum(xRaw, 0, 24, null) : null;
+  if (xRaw && x == null) { err.textContent = "Unpaid hours needs a number."; return; }
+  if (!reason) { err.textContent = "Add the reason for the correction."; return; }
+  if (!by) { err.textContent = "Add who is entering it."; return; }
+  err.textContent = "";
+  LS.set("cc.by", by);
+  try {
+    await S.db.collection("corrections").add({ date, e, in: tin || null, out: tout || null, x, reason, by, at: Date.now(), status: "pending" });
+    $("#f-in").value = ""; $("#f-out").value = ""; $("#f-x").value = ""; $("#f-reason").value = "";
+    toast("Correction added. It counts once someone approves it.");
+  } catch (e2) { err.textContent = writeErrText(e2); }
+}
+
+/* ---------- Roster ---------- */
+function renderRoster() {
+  const q = $("#r-search").value.trim().toLowerCase();
+  const all = people().sort(byName);
+  const counts = new Map();
+  all.filter(p => p.active && p.last4).forEach(p => counts.set(p.last4, (counts.get(p.last4) || []).concat([p.name])));
+  const shown = all.filter(p => !q || p.name.toLowerCase().indexOf(q) >= 0 || p.empId.toLowerCase().indexOf(q) >= 0 || p.crew.toLowerCase().indexOf(q) >= 0);
+  const active = all.filter(p => p.active).length;
+  $("#r-sub").textContent = active + " active" + (all.length > active ? ", " + (all.length - active) + " inactive" : "");
+  const body = $("#r-body"); body.textContent = "";
+  if (!shown.length) body.append(emptyRow(7, all.length ? "No one matches that search." : "No one yet. Add people one at a time, or paste a list from Excel."));
+  for (const p of shown) {
+    const shared = p.active && p.last4 && counts.get(p.last4).length > 1;
+    const tr = h("tr", { class: "clickable", tabindex: "0" },
+      h("td", { class: "strong", text: p.name }), h("td", { text: p.empId }),
+      h("td", {}, p.last4 || "needs 4 digits", shared ? h("span", { class: "chip shared", title: "Also: " + counts.get(p.last4).filter(n => n !== p.name).join(", ") }, "shared, picks name") : null),
+      h("td", { text: p.role }), h("td", { text: p.company }), h("td", { text: p.crew }),
+      h("td", {}, p.active ? "Active" : h("span", { class: "chip inactive" }, "Inactive")));
+    tr.addEventListener("click", () => editPerson(p));
+    tr.addEventListener("keydown", ev => { if (ev.key === "Enter") editPerson(p); });
+    body.append(tr);
+  }
+}
+function editPerson(p) {
+  S.editEmp = p.empId;
+  $("#r-emp").value = p.empId; $("#r-emp").readOnly = true;
+  $("#r-name").value = p.name; $("#r-role").value = p.role; $("#r-company").value = p.company;
+  $("#r-crew").value = p.crew; $("#r-active").checked = p.active;
+  $("#r-save").textContent = "Save changes"; $("#r-err").textContent = "";
+  $("#r-form").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#r-name").focus();
+}
+function clearPerson() {
+  S.editEmp = null;
+  $("#r-form").reset(); $("#r-emp").readOnly = false; $("#r-active").checked = true;
+  $("#r-save").textContent = "Add person"; $("#r-err").textContent = "";
+}
+async function savePerson(ev) {
+  ev.preventDefault();
+  const err = $("#r-err");
+  const id = normId($("#r-emp").value), name = $("#r-name").value.trim();
+  if (!ID_OK.test(id)) { err.textContent = "Employee # can use letters, numbers, and dashes."; return; }
+  if (!last4Of(id)) { err.textContent = "Employee # needs at least 4 digits so the person can check in with the last 4."; return; }
+  if (!name) { err.textContent = "Add the person’s name."; return; }
+  if (!S.editEmp && S.roster.has(id)) { err.textContent = id + " is already on the roster. Tap them in the list to edit."; return; }
+  err.textContent = "";
+  const data = { empId: id, name, role: $("#r-role").value, company: $("#r-company").value.trim(), crew: $("#r-crew").value.trim(), active: $("#r-active").checked, updatedAt: Date.now() };
+  const ok = await writeDoc("roster/" + id, r => r.set(data), S.editEmp ? "Saved " + name : "Added " + name);
+  if (ok) clearPerson();
+}
+async function pasteRoster() {
+  const msg = $("#r-paste-msg");
+  const lines = $("#r-paste-text").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const items = [], bad = [];
+  lines.forEach((l, i) => {
+    const c = cells(l), id = normId(c[0]), name = (c[1] || "").trim();
+    if (!ID_OK.test(id) || !last4Of(id) || !name) { if (i > 0 || /\d{4}/.test(c[0] || "")) bad.push(i + 1); return; }
+    items.push({ empId: id, name, role: roleOf(c[2]), company: (c[3] || "").trim(), crew: (c[4] || "").trim(), active: true, updatedAt: Date.now() });
+  });
+  if (!items.length) { msg.textContent = "No usable rows. Each line needs an employee # with at least 4 digits and a name."; return; }
+  msg.textContent = "Saving " + items.length + "…";
+  let done = 0, failed = 0;
+  const queue = items.slice();
+  const worker = async () => {
+    while (queue.length) {
+      const it = queue.shift();
+      const ref = S.db.doc("roster/" + it.empId);
+      try { await serial(ref.path, () => ref.set(it)); done++; } catch (e) { failed++; }
+      msg.textContent = "Saving " + (done + failed) + " of " + items.length + "…";
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  msg.textContent = "Saved " + done + (done === 1 ? " person" : " people") + "."
+    + (failed ? " " + failed + " didn’t save; try again." : "")
+    + (bad.length ? " Skipped line " + bad.slice(0, 10).join(", ") + "." : "");
+  if (!failed) $("#r-paste-text").value = "";
+}
+
+/* ---------- Station ---------- */
+function fillStation() {
+  const c = cfg();
+  $("#st-site").value = c.site; $("#st-lstart").value = c.lunchStart; $("#st-lend").value = c.lunchEnd; $("#st-lunchon").checked = c.lunchOn; $("#st-tol").value = c.tol;
+  $("#st-end").value = c.shiftEnd; $("#st-cutoff").value = c.cutoff; $("#st-endon").checked = c.endOn;
+  $("#st-dev").value = device.name || ""; $("#st-theme").value = LS.get("cc.theme", "auto");
+  if (!$("#st-from").value) { $("#st-from").value = mondayOf(S.todayKey); $("#st-to").value = S.todayKey; }
+}
+async function saveStation(ev) {
+  ev.preventDefault();
+  const data = { site: $("#st-site").value.trim(), lunchOn: $("#st-lunchon").checked,
+    lunchStart: hhmm($("#st-lstart").value, DEF.lunchStart), lunchEnd: hhmm($("#st-lend").value, DEF.lunchEnd), tol: clampNum($("#st-tol").value, 0, 8, DEF.tol),
+    endOn: $("#st-endon").checked, cutoff: hhmm($("#st-cutoff").value, DEF.cutoff), shiftEnd: hhmm($("#st-end").value, DEF.shiftEnd) };
+  if (data.cutoff > data.shiftEnd) { toast("Set the check-out time at or before the end of shift."); return; }
+  if (data.lunchStart >= data.lunchEnd) { toast("Set lunch to end after it starts."); return; }
+  await writeDoc("config/settings", r => r.update(data), "Settings saved");
+}
+async function changePin(ev) {
+  ev.preventDefault();
+  const p1 = $("#st-pin1").value.trim(), p2 = $("#st-pin2").value.trim(), err = $("#st-pin-err");
+  if (!/^\d{4,6}$/.test(p1)) { err.textContent = "Use 4 to 6 digits for the PIN."; return; }
+  if (p1 !== p2) { err.textContent = "The two PINs don’t match."; return; }
+  if (S.supWho !== "") { err.textContent = "Unlock with the main code to change it."; return; }
+  if (await codeTaken(p1, true)) { err.textContent = "That code is already in use. Pick another."; return; }
+  err.textContent = "";
+  const salt = randSalt(), hash = await hashPin(p1, salt);
+  const ok = await writeDoc("config/secret", r => r.set({ pin: { salt, hash } }, { merge: true }), "Main code changed");
+  if (ok) { $("#st-pin1").value = ""; $("#st-pin2").value = ""; }
+}
+function codeList() {
+  const a = S.secret && S.secret.codes;
+  return Array.isArray(a) ? a.filter(x => x && x.id && x.name && x.salt && x.hash) : [];
+}
+async function codeTaken(pin, skipMain) {
+  const p = mainPin();
+  if (!skipMain && p && await hashPin(pin, p.salt) === p.hash) return true;
+  for (const cd of codeList()) if (await hashPin(pin, cd.salt) === cd.hash) return true;
+  return false;
+}
+function renderCodes() {
+  const main = S.supWho === "", list = $("#st-codes");
+  $("#st-codes-who").textContent = (main ? "You unlocked with the main code." : "You unlocked with " + (S.supWho || "a supervisor") + "’s code.")
+    + " Any code opens the supervisor side. Only the main code can add or remove codes or change the main code.";
+  $("#st-code-add").hidden = !main;
+  $("#st-pin").hidden = !main;
+  list.textContent = "";
+  const codes = codeList().sort((a, b) => a.name.localeCompare(b.name));
+  if (!codes.length) { list.append(h("li", { class: "none", text: "No other codes yet, so only the main code opens the supervisor side." })); return; }
+  for (const cd of codes) {
+    const li = h("li", {}, h("span", { text: cd.name }));
+    if (main) {
+      const rm = h("button", { type: "button", class: "btn quiet" }, "Remove");
+      let armed = 0;
+      rm.addEventListener("click", async () => {
+        if (Date.now() - armed > 4000) {
+          armed = Date.now(); rm.textContent = "Tap again to remove";
+          setTimeout(() => { if (rm.isConnected && !rm.disabled && Date.now() - armed >= 4000) rm.textContent = "Remove"; }, 4100);
+          return;
+        }
+        rm.disabled = true;
+        const ok = await writeDoc("config/secret", r => r.set({ codes: codeList().filter(x => x.id !== cd.id) }, { merge: true }), "Removed " + cd.name + "’s code");
+        if (!ok) { rm.disabled = false; rm.textContent = "Remove"; armed = 0; }
+      });
+      li.append(rm);
+    }
+    list.append(li);
+  }
+}
+async function addCode(ev) {
+  ev.preventDefault();
+  const name = $("#st-code-name").value.trim(), p1 = $("#st-code-pin1").value.trim(), p2 = $("#st-code-pin2").value.trim(), err = $("#st-code-err");
+  if (S.supWho !== "") { err.textContent = "Unlock with the main code to add codes."; return; }
+  if (!name) { err.textContent = "Type the supervisor’s name."; return; }
+  if (!/^\d{4,6}$/.test(p1)) { err.textContent = "Use 4 to 6 digits for the code."; return; }
+  if (p1 !== p2) { err.textContent = "The two codes don’t match."; return; }
+  if (codeList().some(x => x.name.toLowerCase() === name.toLowerCase())) { err.textContent = name + " already has a code. Remove it first to give them a new one."; return; }
+  if (await codeTaken(p1)) { err.textContent = "That code is already in use. Pick another."; return; }
+  err.textContent = "";
+  const salt = randSalt(), hash = await hashPin(p1, salt);
+  const entry = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, salt, hash, at: Date.now() };
+  const ok = await writeDoc("config/secret", r => r.set({ codes: codeList().concat([entry]) }, { merge: true }), "Added a code for " + name);
+  if (ok) { $("#st-code-name").value = ""; $("#st-code-pin1").value = ""; $("#st-code-pin2").value = ""; }
+}
+async function exportRange() {
+  const from = $("#st-from").value, to = $("#st-to").value;
+  if (!from || !to || to < from) { toast("Pick a start date and an end date after it."); return; }
+  try {
+    const qs = await S.db.collection("scans").where("date", ">=", from).where("date", "<=", to).get();
+    const byKey = new Map();
+    qs.docs.forEach(d => { const data = d.data() || {}; byKey.set(String(data.date || d.id), scansFrom(data)); });
+    const keys = Array.from(byKey.keys()).sort();
+    saveCSV("scans-" + from + "-to-" + to + ".csv", scanRows(keys, k => withOutbox(k, byKey.get(k) || [])));
+  } catch (e) { toast("Couldn’t read the scans. Try again."); }
+}
+
+/* ---------- CSV ---------- */
+function toCSV(rows) {
+  return rows.map(r => r.map(v => { const s = v == null ? "" : String(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(",")).join("\r\n");
+}
+async function saveCSV(filename, rows) {
+  if (!S.dl) { toast("Saving files isn’t available here."); return; }
+  try { const r = await S.dl.save({ filename, data: "\ufeff" + toCSV(rows) }); if (r && r.status === "saved") toast("Saved " + filename); }
+  catch (e) { if (e && e.code === "declined") return; toast("Couldn’t save the file. Try again."); }
+}
+
+/* ============================== wiring ============================== */
+function wire() {
+  buildPad($("#k-pad"), kPress);
+  renderPlates();
+  buildPad($("#pin-pad"), pinPress);
+  $("#k-sup").addEventListener("click", () => openPin("onsite"));
+  $("#pin-go").addEventListener("click", pinSubmit);
+  $("#pin-cancel").addEventListener("click", closePin);
+  $("#setup-form").addEventListener("submit", setupSubmit);
+  $("#s-exit").addEventListener("click", lockSup);
+  $("#on-board").addEventListener("click", () => setTab("board"));
+  $("#b-exit").addEventListener("click", () => { if (S.readOnly) S.auth.signOut(); else setTab("onsite"); });
+  $("#si-board").addEventListener("submit", boardSignIn);
+  $("#si-tablet").addEventListener("submit", tabletSignIn);
+  $("#si-show-tablet").addEventListener("click", () => { $("#si-board").hidden = true; $("#si-show-tablet").hidden = true; $("#si-tablet").hidden = false; $("#si-email").focus(); });
+  $("#si-show-board").addEventListener("click", () => { $("#si-tablet").hidden = true; $("#si-board").hidden = false; $("#si-show-tablet").hidden = false; $("#si-code").focus(); });
+  $("#su-imp-btn").addEventListener("click", () => $("#su-imp-file").click());
+  $("#su-imp-file").addEventListener("change", ev => { const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; if (f) importData(f); });
+  $("#st-signout").addEventListener("click", ev => {
+    const b = ev.currentTarget, armed = Number(b.dataset.armed || 0);
+    if (Date.now() - armed < 4000) { S.auth.signOut(); return; }
+    b.dataset.armed = String(Date.now()); b.textContent = "Tap again to sign out";
+    setTimeout(() => { if (Date.now() - Number(b.dataset.armed || 0) >= 4000) b.textContent = "Sign this tablet out"; }, 4100);
+  });
+  $$("#tabs [data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  $("#tabs").addEventListener("keydown", ev => {
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+    const tabs = $$("#tabs [data-tab]").filter(b => !b.hidden);
+    const i = tabs.findIndex(b => b.dataset.tab === S.tab);
+    const n = tabs[(i + (ev.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    setTab(n.dataset.tab); n.focus();
+  });
+  $$(".crewsel").forEach(sel => sel.addEventListener("change", () => { S.crew = sel.value; renderTab(); }));
+  // daily
+  const goDay = k => { if (!k) return; S.dailyKey = k; subDaily(); renderTab(); };
+  $("#d-prev").addEventListener("click", () => goDay(addDays(S.dailyKey, -1)));
+  $("#d-next").addEventListener("click", () => goDay(addDays(S.dailyKey, 1)));
+  $("#d-today").addEventListener("click", () => goDay(S.todayKey));
+  $("#d-date").addEventListener("change", ev => goDay(ev.target.value));
+  $("#d-export").addEventListener("click", exportDaily);
+  $("#d-fill-btn").addEventListener("click", openFill);
+  $("#d-fill-close").addEventListener("click", () => { $("#d-fill").hidden = true; });
+  $("#d-fill-pick").addEventListener("click", () => $("#d-fill-files").click());
+  $("#d-fill-files").addEventListener("change", ev => { const files = Array.from(ev.target.files || []); ev.target.value = ""; if (files.length) replaceSaved(files); });
+  // week
+  const goWeek = k => { if (!k) return; S.weekKey = mondayOf(k); subWeek(); renderTab(); };
+  $("#w-prev").addEventListener("click", () => goWeek(addDays(S.weekKey, -7)));
+  $("#w-next").addEventListener("click", () => goWeek(addDays(S.weekKey, 7)));
+  $("#w-this").addEventListener("click", () => goWeek(S.todayKey));
+  $("#w-date").addEventListener("change", ev => goWeek(ev.target.value));
+  $("#w-import-btn").addEventListener("click", () => { $("#w-import").hidden = false; $("#w-import-msg").textContent = ""; $("#w-paste").focus(); });
+  $("#w-import-cancel").addEventListener("click", () => { $("#w-import").hidden = true; });
+  $("#w-import-go").addEventListener("click", importTS);
+  $("#w-export").addEventListener("click", exportWeek);
+  $("#w-export-scans").addEventListener("click", exportWeekScans);
+  // corrections
+  $("#f-form").addEventListener("submit", addFix);
+  $("#f-filter").addEventListener("change", () => { S.fixSig = ""; renderTab(); });
+  // roster
+  $("#r-form").addEventListener("submit", savePerson);
+  $("#r-clear").addEventListener("click", clearPerson);
+  $("#r-search").addEventListener("input", renderRoster);
+  $("#r-paste-btn").addEventListener("click", () => { $("#r-paste").hidden = false; $("#r-paste-msg").textContent = ""; $("#r-paste-text").focus(); });
+  $("#r-paste-cancel").addEventListener("click", () => { $("#r-paste").hidden = true; });
+  $("#r-paste-go").addEventListener("click", pasteRoster);
+  // station
+  $("#st-form").addEventListener("submit", saveStation);
+  $("#st-pin").addEventListener("submit", changePin);
+  $("#st-code-add").addEventListener("submit", addCode);
+  $("#st-dev").addEventListener("change", ev => { device.name = ev.target.value.trim(); LS.set("cc.device", device); toast("Tablet name saved"); });
+  $("#st-theme").addEventListener("change", ev => { LS.set("cc.theme", ev.target.value); applyTheme(); });
+  $("#st-export").addEventListener("click", exportRange);
+  // keyboard on the kiosk and PIN pad
+  document.addEventListener("keydown", ev => {
+    lastActivity = Date.now();
+    if (!$("#pin-ov").hidden) {
+      if (/^\d$/.test(ev.key)) pinPress(ev.key);
+      else if (ev.key === "Backspace") pinPress("back");
+      else if (ev.key === "Enter") { ev.preventDefault(); pinSubmit(); }
+      else if (ev.key === "Escape") closePin();
+      return;
+    }
+    if (S.mode !== "kiosk") return;
+    if (!$("#k-ov").hidden) { if (ev.key === "Escape") closeOv(); return; }
+    if (/^\d$/.test(ev.key)) kPress(ev.key);
+    else if (ev.key === "Backspace") kPress("back");
+    else if (ev.key === "Escape") kPress("clear");
+  });
+  document.addEventListener("pointerdown", () => { lastActivity = Date.now(); }, { passive: true });
+  setInterval(() => {
+    if (S.mode === "sup" && S.tab === "board") renderBoard();
+    else if (S.mode === "sup" && !S.readOnly && Date.now() - lastActivity > 180000) { lockSup(); toast("Locked after 3 minutes without use."); }
+  }, 15000);
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
